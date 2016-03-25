@@ -1,4 +1,4 @@
-classdef FrequencyTuning < symphonyui.core.Protocol
+classdef FrequencyTuning < edu.washington.rieke.protocols.RiekeProtocol
     
     properties
         led                             % Output LED
@@ -28,7 +28,7 @@ classdef FrequencyTuning < symphonyui.core.Protocol
     methods
         
         function didSetRig(obj)
-            didSetRig@symphonyui.core.Protocol(obj);
+            didSetRig@edu.washington.rieke.protocols.RiekeProtocol(obj);
             
             [obj.led, obj.ledType] = obj.createDeviceNamesProperty('LED');
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
@@ -39,7 +39,7 @@ classdef FrequencyTuning < symphonyui.core.Protocol
         end
         
         function prepareRun(obj)
-            prepareRun@symphonyui.core.Protocol(obj);
+            prepareRun@edu.washington.rieke.protocols.RiekeProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
@@ -86,7 +86,7 @@ classdef FrequencyTuning < symphonyui.core.Protocol
         end
         
         function prepareEpoch(obj, epoch)
-            prepareEpoch@symphonyui.core.Protocol(obj, epoch);
+            prepareEpoch@edu.washington.rieke.protocols.RiekeProtocol(obj, epoch);
             
             % get epoch number
             epochNum = obj.numEpochsPrepared;
@@ -97,11 +97,13 @@ classdef FrequencyTuning < symphonyui.core.Protocol
             %%%%%
             epoch.addParameter(...
                 'Frequency', obj.determineFrequency(epochNum));
+            epoch.addParameters(...
+                'Contrast', obj.determineContrast(epochNum));
             %%%%%
         end
         
         function prepareInterval(obj, interval)
-            prepareInterval@symphonyui.core.Protocol(obj, interval);
+            prepareInterval@edu.washington.rieke.protocols.RiekeProtocol(obj, interval);
             
             device = obj.rig.getDevice(obj.led);
             interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
