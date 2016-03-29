@@ -2,11 +2,11 @@ classdef FrequencyTuning < edu.washington.rieke.protocols.RiekeProtocol
     
     properties
         led                             % Output LED
-        preTime = 10                    % Pulse leading duration (ms)
-        stimTime = 100                  % Pulse duration (ms)
-        tailTime = 400                  % Pulse trailing duration (ms)
-        frequencies = [1, 2, 4, 8, 16, 32]
-        contrasts = [100, 100, 100, 100, 100, 100]
+        preTime = 100                   % Pulse leading duration (ms)
+        stimTime = 2000                 % Pulse duration (ms)
+        tailTime = 100                  % Pulse trailing duration (ms)
+        frequencies = [1, 2, 4, 8, 16, 32, 48, 64]
+        contrasts = [25, 25, 30, 40, 100, 100, 100, 100]
         lightMean = 0                   % Pulse and background mean (V)
         amp                             % Input amplifier
         numberOfAverages = uint16(5)    % Number of epochs
