@@ -1,4 +1,4 @@
-classdef ConeTyping < edu.washington.rieke.protocols.RiekeProtocol
+classdef ConeTyping < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties
         preTime = 10                    % Pulse leading duration (ms)
@@ -22,14 +22,14 @@ classdef ConeTyping < edu.washington.rieke.protocols.RiekeProtocol
     methods
         
         function didSetRig(obj)
-            didSetRig@edu.washington.rieke.protocols.RiekeProtocol(obj);
+            didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
 
         
         function prepareRun(obj)
-            prepareRun@edu.washington.rieke.protocols.RiekeProtocol(obj);
+            prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateFigure);
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
@@ -122,7 +122,7 @@ classdef ConeTyping < edu.washington.rieke.protocols.RiekeProtocol
         end
         
         function prepareEpoch(obj, epoch)
-            prepareEpoch@edu.washington.rieke.protocols.RiekeProtocol(obj, epoch);
+            prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             % get epoch number
             epochNum = obj.numEpochsPrepared;
@@ -145,7 +145,7 @@ classdef ConeTyping < edu.washington.rieke.protocols.RiekeProtocol
         end
         
         function prepareInterval(obj, interval)
-            prepareInterval@edu.washington.rieke.protocols.RiekeProtocol(obj, interval);
+            prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
 %             device = obj.rig.getDevice(obj.led);
 %             interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
