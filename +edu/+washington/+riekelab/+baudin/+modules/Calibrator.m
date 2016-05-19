@@ -283,7 +283,7 @@ classdef Calibrator < symphonyui.ui.Module
         % returns a string of the base folder containing calibration data
         function folderPath = getCalibrationFolderPath(obj) %#ok<MANU>
             folderPath = ...
-                edu.washington.rieke.baudin.modules.calibratorUtilities.CalibratorConstants.PATH;
+                edu.washington.riekelab.baudin.modules.calibratorUtilities.CalibratorConstants.PATH;
         end
         
         % returns rig name as a string - gets it from the last directory in
@@ -362,7 +362,7 @@ classdef Calibrator < symphonyui.ui.Module
                         setName '.txt'];
                     % find most recent entry in that file
                     [val, date] = ...
-                        edu.washington.rieke.baudin.modules.calibratorUtilities.readMostRecentCalibration(filePath);
+                        edu.washington.riekelab.baudin.modules.calibratorUtilities.readMostRecentCalibration(filePath);
                     % add to map
                     obj.recentCalibrationValues.get(devName).put(setName, val);
                     obj.recentCalibrationDates.get(devName).put(setName, char(date));
@@ -1087,8 +1087,26 @@ classdef Calibrator < symphonyui.ui.Module
         % once user has calibrated all devices/settings; this method will
         % save any new calibrations and close the UI
         function submitAllCalibrationsButton(obj, ~, ~)
-            obj.storeFinalValues;
-            obj.closeUI;
+            obj.storeFinalValues();
+            obj.addCalibrationsToRig();
+            obj.closeUI();
+        end
+       
+        function addCalibrationsToRig(obj)
+            for dev = 1:obj.numDevices()
+                basePath = [obj.calibrationFolderPath filesep ...
+                    obj.devices{dev}.name];
+                settings = obj.settingsNames{dev};
+                calibrationsMap = containers.Map();
+                for sett = 1:numel(settings)
+                    logPath = [basePath filesep settings{sett} '.txt'];
+                    [calibrationsMap(settings{sett}), ~] = ...
+                        edu.washington.riekelab.baudin.modules.calibratorUtilities.readMostRecentCalibration(logPath);
+                end
+                % add the map to the device as a resource...
+                obj.devices{dev}.addResource( ...
+                    'calibrations', calibrationsMap);
+            end
         end
         
         % the method that actually does the saving of the new values
@@ -1105,11 +1123,11 @@ classdef Calibrator < symphonyui.ui.Module
                     for sett = 1:numel(settings)
                         logPath = [basePath filesep settings{sett} '.txt'];
                         % saves date, value, and adds units
-                        edu.washington.rieke.baudin.modules.calibratorUtilities.addCalibrationToLog( ...
+                        edu.washington.riekelab.baudin.modules.calibratorUtilities.addCalibrationToLog( ...
                             logPath, ...
                             obj.calibrationValues{dev}(settings{sett}), ...
                             time, ...
-                            edu.washington.rieke.baudin.modules.calibratorUtilities.CalibratorConstants.UNITS);
+                            edu.washington.riekelab.baudin.modules.calibratorUtilities.CalibratorConstants.UNITS);
                     end
                 end
             end
