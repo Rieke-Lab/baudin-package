@@ -24,10 +24,11 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
         function createUi(obj, figureHandle)
             obj.figureHandle = figureHandle;
         end
+        
         function actuallyCreateUI(obj)
             import appbox.*;
             import symphonyui.app.App;
-
+            
             % start by getting some information about the photoreceptors
             % because it will determine the number of rows in the window,
             % and therefore the window's size
@@ -132,7 +133,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
             
             obj.photoreceptorBoxes = ...
                 obj.makePhotoreceptorBoxes(converterLayout);
-
+            
             set(converterLayout, ...
                 'Widths', [80 -1 22], ...
                 'Heights', 23 * ones(1, obj.photoreceptors.length + 1));
@@ -193,6 +194,9 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
             obj.populateNdfs();
             obj.populateGain();
             obj.populateSpecies();
+            if ~obj.isSufficientInformation()
+                obj.toggleBottomHalf('off');
+            end
         end
         
         function bind(obj)
@@ -293,7 +297,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
         
         function s = findSpecies(obj)
             s = [];
-
+            
             if ~obj.documentationService.hasOpenFile()
                 return;
             end
@@ -323,6 +327,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
             obj.species = obj.findSpecies();
             obj.populateSpecies();
             obj.populatePhotoreceptorList();
+            obj.updateBottomHalf();
         end
         
         function onServiceEndedEpochGroup(obj, ~, ~)
@@ -378,7 +383,7 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
                 curr_isom = round(curr_isom);
                 currBox = obj.photoreceptorBoxes(key);
                 currBox.String = num2str(curr_isom);
-                currBox.Value = curr_isom;               
+                currBox.Value = curr_isom;
             end
         end
         
@@ -432,9 +437,33 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
                 end
             end
         end
+        
+        % state should be 'on' or 'off'
+        function toggleBottomHalf(obj, state)
+           obj.voltsBox.Enable = state;
+           keys = obj.photoreceptorBoxes.keys();
+           for i = 1:numel(keys)
+              box = obj.photoreceptorBoxes(keys{i}); 
+              box.Enable = state;
+           end
+        end
+        
+        function tf = isSufficientInformation(obj)
+            tf = true;
+        end
+        
+        function updateBottomHalf(obj)
+            if obj.isSufficientInformation()
+                obj.toggleBottomHalf('on');
+            else
+                obj.toggleBottomHalf('off');
+            end
+        end
+                
+            
     end
     
-    methods (Static)      
+    methods (Static)
         function value = presentablePhotoreceptorStrings(value)
             switch value
                 case {'scone', 'sCone'}
@@ -446,6 +475,6 @@ classdef IsomerizationsConverterJacob < symphonyui.ui.Module
                 case 'rod'
                     value = 'Rod';
             end
-        end 
+        end
     end
 end

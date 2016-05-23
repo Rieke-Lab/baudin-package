@@ -11,9 +11,9 @@ function addCalibrationToLog(logPath, value, date, varargin)
 fid = fopen(logPath, 'at');
 fprintf(fid, '\n%s', char(date));
 if isempty(varargin)
-    fprintf(fid, '\n%.4f', value);
+    fprintf(fid, '\n%.8f', value);
 else
-    fprintf(fid, '\n%.4f %s', value, char(varargin{1}));
+    fprintf(fid, '\n%.8f %s', value, char(varargin{1}));
 end
 fclose(fid);
 

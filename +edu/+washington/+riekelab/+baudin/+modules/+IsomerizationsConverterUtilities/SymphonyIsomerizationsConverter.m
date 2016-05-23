@@ -100,9 +100,9 @@ end
             attenuation = 1;
         else
             attenuation = 0;
-            ndfs = strsplit(currentNDFs);
+            ndfs = strsplit(currentNDFs, ';');
             for i = 1:numel(ndfs)
-                attenuation = attenuation + NDFAttenuations(ndfs{i});
+                attenuation = attenuation + NDFAttenuations(strtrim(ndfs{i}));
             end
             attenuation = 10 ^ (-attenuation);
         end
