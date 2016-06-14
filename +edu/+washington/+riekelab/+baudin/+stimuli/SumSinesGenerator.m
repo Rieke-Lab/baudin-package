@@ -8,12 +8,15 @@ classdef SumSinesGenerator < symphonyui.core.StimulusGenerator
         preTime     % Leading duration (ms)
         stimTime    % Sine wave duration (ms)
         tailTime    % Trailing duration (ms)
-        amplitude   % Vector of sine wave amplitudes (units)
-        period      % Vector of sine wave periods (ms)
-        phase       % Vector of sine wave phase offsets (radians)
+        
+        frequencies % frequencies of sines to sum
+        contrasts   % contrasts of sines to sum
+        phases      % phase offsets of each sine
+
         mean        % Mean amplitude (units)
         sampleRate  % Sample rate of generated stimulus (Hz)
         units       % Units of generated stimulus
+        
     end
     
     methods
@@ -47,10 +50,16 @@ classdef SumSinesGenerator < symphonyui.core.StimulusGenerator
             
             data = ones(1, prePts + stimPts + tailPts) * obj.mean;
             
-            for i = 1:numel(obj.amplitude)
+            time = (1:stimPts) / obj.sampleRate;
+            
+            for i = 1:numel(obj.frequencies)
+                contr = obj.mean * obj.contrasts(i);
                 data(prePts + 1:prePts + stimPts) = ...
                     data(prePts + 1:prePts + stimPts) + ...
-                    createSinusoid(obj.period(i));
+                    createSinusoid( ...
+                    contr, obj.frequencies(i), ...
+                    obj.phases(i), ...
+                    time);
             end
             
             parameters = obj.dictionaryFromMap(obj.propertyMap);
@@ -61,13 +70,9 @@ classdef SumSinesGenerator < symphonyui.core.StimulusGenerator
             cobj = RenderedStimulus(class(obj), parameters, output);
             s = symphonyui.core.Stimulus(cobj);
             
-            function vec = createSinusoid(per)
-                freq = 2 * pi / (per * 1e-3);
-                time = (0:stimPts-1) / obj.sampleRate;
-                vec = obj.mean + obj.amplitude * sin(freq * time + obj.phase);
+            function vec = createSinusoid(amp, freq, phase, time)
+                vec = amp * sin(2 * pi * freq * time + phase);
             end
         end
-        
     end
-    
 end

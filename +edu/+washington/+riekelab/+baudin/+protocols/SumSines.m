@@ -2,11 +2,21 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties
         led                             % Output LED
+        
         preTime = 10                    % Pulse leading duration (ms)
         stimTime = 100                  % Pulse duration (ms)
         tailTime = 400                  % Pulse trailing duration (ms)
-        frequencies = [1, 2, 4, 8, 16, 32] % a matrix of frequencies
-        contrasts = [100, 100, 100, 100, 100, 100]
+        
+        baseFrequency
+        baseContrast = 50
+        basePhase = 0
+        
+        secondFrequency
+        secondContrast = 50
+        secondPhase = 0
+        
+        contrastMultiplier = 2
+        
         lightMean = 0                   % Pulse and background mean (V)
         amp                             % Input amplifier
         numberOfAverages = uint16(5)    % Number of epochs
@@ -22,7 +32,7 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties (Dependent)
         totalEpochs
-        numFrequencies
+        numCombinations
         numDimensions
     end
     
@@ -52,12 +62,18 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function stim = createLedStimulus(obj, epochNum)
             
-            gen = symphonyui.builtin.stimuli.SineGenerator();
+            gen = symphonyui.builtin.stimuli.SumSinesGenerator();
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
-            gen.amplitude = obj.determineAmplitude(epochNum);
-            gen.period = obj.determinePeriod(epochNum);
+            
+            [frequencies, contrasts, phases] = ...
+                obj.determineParameters(epochNum);
+            
+            gen.frequencies = frequencies;
+            gen.contrasts = contrasts;
+            gen.phases = phases;
+            
             gen.mean = obj.lightMean;
             gen.sampleRate = obj.sampleRate;
             gen.units = 'V';
@@ -66,36 +82,31 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
             stim = gen.generate();
         end
         
-        function value = getIndeces(obj, epNum)
-                value = zeros(1, obj.numDimensions);
-                arraySize = size(obj.frequencies);
-                dimProd = cumprod([arraySize(2:end) 1], 'reverse');
-                idx = 1;            
-                while epNum > 0 && idx <= numel(arraySize)
-                    value(idx) = ceil(epNum / dimProd(idx));
-                    epNum = epNum - dimProd(idx) * (value(idx) - 1);
-                    idx = idx + 1;
-                end
-        end
-        
-        function amp = determineAmplitude(obj, epochNum)
-            amp = obj.determineContrast(epochNum) *obj.lightMean;
-        end
-        
-        function idx = determineFreqIdx(obj, epochNum)
-            idx = mod(epochNum - 1, obj.numFrequencies) + 1;
-        end
-        
-        function per = determinePeriod(obj, epochNum)  % in ms
-            per = 1000 / obj.determineFrequency(epochNum);
-        end
-        
-        function freq = determineFrequency(obj, epochNum)
-            freq = obj.frequencies(obj.determineFreqIdx(epochNum));
-        end
-        
-        function contr = determineContrast(obj, epochNum) %[0, 1]
-            contr = obj.contrasts(obj.determineFreqIdx(epochNum)) / 100;
+        function [frequencies, contrasts, phases] = ...
+                determineParameters(obj, epochNum)
+            stimType = mod(epochNum, 5);
+
+            if stimType == 0
+                frequencies = obj.baseFrequency;
+                contrasts = obj.baseContrast;
+                phases = obj.basePhase;
+            elseif stimType == 1
+                frequencies = obj.baseFrequency;
+                contrasts = obj.contrastMultiplier * obj.baseContrast;
+                phases = obj.basePhase;
+            elseif stimType == 2
+                frequencies = obj.secondFrequency;
+                contrasts = obj.secondContrast;
+                phases = obj.secondPhase;
+            elseif stimType == 3
+                frequencies = obj.secondFrequency;
+                contrasts = obj.contrastMultiplier * obj.secondContrast;
+                phases = obj.secondPhase;         
+            else
+                frequencies = [obj.baseFrequency obj.secondFrequency];
+                contrasts = [obj.baseContrast obj.secondContrast];
+                phases = [obj.basePhase obj.secondPhase];
+            end
         end
         
         function prepareEpoch(obj, epoch)
@@ -107,12 +118,15 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addStimulus(obj.rig.getDevice(obj.led), obj.createLedStimulus(epochNum));
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
-            %%%%%
+            [frequencies, contrasts, phases] = ...
+                obj.determineParameters(epochNum);
+            
             epoch.addParameter(...
-                'Frequency', obj.determineFrequency(epochNum));
+                'Frequencies', frequencies);
             epoch.addParameters(...
-                'Contrast', obj.determineContrast(epochNum));
-            %%%%%
+                'Contrasts', contrasts);
+            epoch.addParameter( ...
+                'Phases', phases);
         end
         
         function prepareInterval(obj, interval)
@@ -135,13 +149,9 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     % for dependent properites
     methods
         function value = get.totalEpochs(obj)
-            value = obj.numFrequencies * obj.numberOfAverages;
+            value = 5 * obj.numberOfAverages;
         end
-        
-        function value = get.numFrequencies(obj)
-            value = numel(obj.frequencies);
-        end
-        
+                
         function value = get.numDimensions(obj)
             value = ndims(obj.frequencies);
         end
