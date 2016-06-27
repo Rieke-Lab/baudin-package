@@ -2,11 +2,11 @@ classdef ConeTyping < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties
         preTime = 10                    % Pulse leading duration (ms)
-        stimTime = 100                  % Pulse duration (ms)
+        stimTime = 10                   % Pulse duration (ms)
         tailTime = 400                  % Pulse trailing duration (ms)
-        redLEDAmplitude = 1             % Pulse amplitude (V)
+        redLEDAmplitude = 7             % Pulse amplitude (V)
         greenLEDAmplitude = 1           % Pulse amplitude (V)
-        uvLEDAmplitude = 1              % Pulse amplitude (V)
+        uvLEDAmplitude = 4              % Pulse amplitude (V)
         lightMean = 0                   % Pulse and background mean (V)
         amp                             % Input amplifier
         numberOfAverages = uint16(2)    % Number of epochs
