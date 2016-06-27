@@ -9,7 +9,7 @@ classdef ConeTyping < edu.washington.riekelab.protocols.RiekeLabProtocol
         uvLEDAmplitude = 1              % Pulse amplitude (V)
         lightMean = 0                   % Pulse and background mean (V)
         amp                             % Input amplifier
-        numberOfAverages = uint16(5)    % Number of epochs
+        numberOfAverages = uint16(2)    % Number of epochs
         interpulseInterval = 0          % Duration between pulses (s)
     end
     
