@@ -4,11 +4,8 @@ classdef GainController < symphonyui.ui.Module
        leds 
        figureHandle
        ledListeners
-       
-       % ui components
-       ledTitles
-       gainButtons
-       gainStrings
+       mainLayout
+       gainSettingsRows
     end       
     
     
@@ -21,14 +18,24 @@ classdef GainController < symphonyui.ui.Module
     
     methods
         function createUI(obj, figureHandle)
+            import appbox.*;
             obj.figureHandle = figureHandle;
+            set(obj.figureHandle, ...
+                'Name', 'Gain Controller', ...
+                'Position', screenCenter(200, 200));
+            
+            obj.mainLayout = uix.VBox( ...
+                'Parent', obj.figureHandle);
         end
         
         function populateUI(obj)
             % add LEDs and their current gains
-            
+            for i = 1:numel(obj.leds)
+                obj.gainSettingsRows(i) = edu.washington.riekelab.baudin.modules.gainControllerUtilities.GainSettingsRow( ...
+                    obj.leds(i), ...
+                    obj.mainLayout);
+            end
         end
-
     end
     
     methods (Access = protected)
@@ -39,42 +46,17 @@ classdef GainController < symphonyui.ui.Module
         
         function bind(obj)
             bind@symphonyui.ui.Module(obj);
-            
-            obj.bindLeds();
-                       
+
             c = obj.configurationService;
             obj.addListener(c, 'InitializedRig', @obj.onServiceInitializedRig);
         end
     end
     
     methods (Access = private)
-        
-        function bindLeds(obj)
-            for i = 1:numel(obj.leds)
-                obj.ledListeners{end + 1} = obj.addListener(obj.leds{i}, 'SetConfigurationSetting', @obj.onLedSetConfigurationSetting);
-            end
-        end
-        
-        function unbindLeds(obj)
-            while ~isempty(obj.ledListeners)
-                obj.removeListener(obj.ledListeners{1});
-                obj.ledListeners(1) = [];
-            end
-        end
-        
         function onServiceInitializedRig(obj)
             % flush out and reset everything
-            obj.unbindLeds();
-            obj.leds = obj.configurationService.getDevices('LED');
-            obj.bindLeds();
-            obj.populateUI();
+            clf(obj.figureHandle);
+            obj.createUI(obj.figureHandle);
         end
-        
-        function markSelected(obj)
-        
-        
     end
-    
-    
-    
 end

@@ -1,4 +1,4 @@
-classdef gainSettingsRow < handle
+classdef GainSettingsRow < handle
     
     properties
         led
@@ -23,7 +23,7 @@ classdef gainSettingsRow < handle
     end
     
     methods
-        function obj = gainSettingsRow(led)            
+        function obj = GainSettingsRow(led, uiParent)            
             obj.led = led;
             obj.ledName = led.name;
             obj.bindLed();
@@ -130,13 +130,6 @@ classdef gainSettingsRow < handle
             
             obj.currentlySelected = ...
                 obj.led.getConfigurationSetting('gain');
-        end
-        
-        function reset(obj, newLed)
-           % essentially reconstructs it on the off chance that someone 
-           % initializes another rig.
-           % unbind
-           % restart
         end
         
         function clr = determinSelectedColor(obj)
