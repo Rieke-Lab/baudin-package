@@ -37,7 +37,7 @@ classdef gainSettingsRow < handle
         function onLedSetConfigurationSetting(obj)
             % check the currently selected and see if it matches
             newSetting = obj.led.getConfigurationSetting('gain');
-            obj.onButtonPushed(~, ~, name)
+            obj.onButtonPushed([], [], newSetting)
         end
 
         function bindLed(obj)
@@ -63,10 +63,7 @@ classdef gainSettingsRow < handle
                 'Parent', obj.mainUiBox, ...
                 'String', obj.ledName);
             
-            % add the settings
-            obj.gainButtons = containers.Map();
-            
-            
+            obj.addGainButtons(obj.mainUiBox);
         end
         
         function addGainButtons(obj, box)
