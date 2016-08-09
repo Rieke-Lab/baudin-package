@@ -3,23 +3,23 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties
         led                             % Output LED
         
-        preTime = 10                    % Pulse leading duration (ms)
-        stimTime = 100                  % Pulse duration (ms)
-        tailTime = 400                  % Pulse trailing duration (ms)
+        preTime = 100                    % Pulse leading duration (ms)
+        stimTime = 2000                  % Pulse duration (ms)
+        tailTime = 100                  % Pulse trailing duration (ms)
         
-        baseFrequency
+        baseFrequency = 1
         baseContrast = 50
         basePhase = 0
         
-        secondFrequency
+        secondFrequency = 8
         secondContrast = 50
         secondPhase = 0
         
         contrastMultiplier = 2
         
-        lightMean = 0                   % Pulse and background mean (V)
+        lightMean = 1                   % Pulse and background mean (V)
         amp                             % Input amplifier
-        numberOfAverages = uint16(5)    % Number of epochs
+        numberOfAverages = uint16(2)    % Number of epochs
         interpulseInterval = 0          % Duration between pulses (s)
     end
     
@@ -32,8 +32,6 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     
     properties (Dependent)
         totalEpochs
-        numCombinations
-        numDimensions
     end
     
     methods
@@ -62,43 +60,45 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
         
         function stim = createLedStimulus(obj, epochNum)
             
-            gen = symphonyui.builtin.stimuli.SumSinesGenerator();
+            gen = edu.washington.riekelab.baudin.stimuli.SumSinesGenerator();
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
-            
+            disp(['epochNum in: ' num2str(epochNum)])
             [frequencies, contrasts, phases] = ...
                 obj.determineParameters(epochNum);
             
             gen.frequencies = frequencies;
             gen.contrasts = contrasts;
             gen.phases = phases;
-            
+
             gen.mean = obj.lightMean;
             gen.sampleRate = obj.sampleRate;
             gen.units = 'V';
-            disp(epochNum)
-            disp(gen.period)
+
+
             stim = gen.generate();
+            disp('generated')
         end
         
         function [frequencies, contrasts, phases] = ...
                 determineParameters(obj, epochNum)
             stimType = mod(epochNum, 5);
-
-            if stimType == 0
+            disp(epochNum)
+            disp(stimType)
+            if stimType == 1
                 frequencies = obj.baseFrequency;
                 contrasts = obj.baseContrast;
                 phases = obj.basePhase;
-            elseif stimType == 1
+            elseif stimType == 2
                 frequencies = obj.baseFrequency;
                 contrasts = obj.contrastMultiplier * obj.baseContrast;
                 phases = obj.basePhase;
-            elseif stimType == 2
+            elseif stimType == 3
                 frequencies = obj.secondFrequency;
                 contrasts = obj.secondContrast;
                 phases = obj.secondPhase;
-            elseif stimType == 3
+            elseif stimType == 4
                 frequencies = obj.secondFrequency;
                 contrasts = obj.contrastMultiplier * obj.secondContrast;
                 phases = obj.secondPhase;         
@@ -123,10 +123,11 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             epoch.addParameter(...
                 'Frequencies', frequencies);
-            epoch.addParameters(...
+            epoch.addParameter(...
                 'Contrasts', contrasts);
             epoch.addParameter( ...
                 'Phases', phases);
+            disp('epoch prepared')
         end
         
         function prepareInterval(obj, interval)
@@ -149,11 +150,9 @@ classdef SumSines < edu.washington.riekelab.protocols.RiekeLabProtocol
     % for dependent properites
     methods
         function value = get.totalEpochs(obj)
-            value = 5 * obj.numberOfAverages;
-        end
-                
-        function value = get.numDimensions(obj)
-            value = ndims(obj.frequencies);
+            disp('starting total epochs')
+            value = 5 * double(obj.numberOfAverages);
+            disp('finished total epochs')
         end
     end
     

@@ -115,7 +115,7 @@ classdef BackgroundControlJacob < symphonyui.ui.Module
                 if sum(regexpi(name, 'LED'))
                     obj.devices{i}.background = ...
                         symphonyui.core.Measurement( ...
-                        0, obj.devices{i}.background.displayUnits);
+                        -1, obj.devices{i}.background.displayUnits);
                     obj.devices{i}.applyBackground();
                 end
             end 

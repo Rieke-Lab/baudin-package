@@ -17,12 +17,12 @@ classdef GainController < symphonyui.ui.Module
     end
     
     methods
-        function createUI(obj, figureHandle)
+        function createUi(obj, figureHandle)
             import appbox.*;
             obj.figureHandle = figureHandle;
             set(obj.figureHandle, ...
                 'Name', 'Gain Controller', ...
-                'Position', screenCenter(200, 200));
+                'Position', screenCenter(250, 80));
             
             obj.mainLayout = uix.VBox( ...
                 'Parent', obj.figureHandle);
@@ -30,9 +30,11 @@ classdef GainController < symphonyui.ui.Module
         
         function populateUI(obj)
             % add LEDs and their current gains
+            
+            obj.gainSettingsRows = cell(1, numel(obj.leds));
             for i = 1:numel(obj.leds)
-                obj.gainSettingsRows(i) = edu.washington.riekelab.baudin.modules.gainControllerUtilities.GainSettingsRow( ...
-                    obj.leds(i), ...
+                obj.gainSettingsRows{i} = edu.washington.riekelab.baudin.modules.gainControllerUtilities.GainSettingsRow( ...
+                    obj.leds{i}, ...
                     obj.mainLayout);
             end
         end
@@ -53,10 +55,12 @@ classdef GainController < symphonyui.ui.Module
     end
     
     methods (Access = private)
-        function onServiceInitializedRig(obj)
+        function onServiceInitializedRig(obj, ~, ~)
             % flush out and reset everything
             clf(obj.figureHandle);
-            obj.createUI(obj.figureHandle);
+            obj.createUi(obj.figureHandle);
+            obj.leds = obj.configurationService.getDevices('LED');
+            obj.populateUI();
         end
     end
 end

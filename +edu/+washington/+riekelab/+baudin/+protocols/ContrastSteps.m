@@ -56,6 +56,7 @@ classdef ContrastSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.tailTime = obj.tailTime;
             gen.amplitude = obj.percentContrastToVolts( ...
                 obj.determineContrast(epochNum));
+            disp(gen.amplitude);
             gen.mean = obj.lightMean;
             gen.sampleRate = obj.sampleRate;
             gen.units = 'V';
@@ -67,10 +68,10 @@ classdef ContrastSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         function idx = determineContrastIdx(obj, epochNum)
             idx = mod(epochNum - 1, obj.numContrasts) + 1;
         end
-
-        function contr = determineContrast(obj, epochNum) %[0, 1]
+        
+        function contr = determineContrast(obj, epochNum)
             contr = ...
-                obj.contrasts(obj.determineContrastIdx(epochNum)) / 100;
+                obj.contrasts(obj.determineContrastIdx(epochNum));
         end
         
         function prepareEpoch(obj, epoch)
@@ -82,7 +83,7 @@ classdef ContrastSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             epoch.addStimulus(obj.rig.getDevice(obj.led), obj.createLedStimulus(epochNum));
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
-
+            
             epoch.addParameter(...
                 'Contrast', obj.determineContrast(epochNum));
         end
@@ -109,7 +110,7 @@ classdef ContrastSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
     % for dependent properites
-    methods 
+    methods
         function value = get.totalEpochs(obj)
             value = obj.numContrasts * obj.numberOfAverages;
         end

@@ -34,14 +34,20 @@ classdef GainSettingsRow < handle
             obj.buildUIRow(uiParent);
         end
          
-        function onLedSetConfigurationSetting(obj)
+        function onLedSetConfigurationSetting(obj, ~, ~)
+            obj.UpdateButtonsState();
+        end
+        
+        function UpdateButtonsState(obj)
             % check the currently selected and see if it matches
             newSetting = obj.led.getConfigurationSetting('gain');
-            obj.onButtonPushed([], [], newSetting)
+            for i = 1:numel(obj.gainNames)
+                obj.setButtonState(obj.gainNames{i}, strcmp(newSetting, obj.gainNames{i}));
+            end
         end
 
         function bindLed(obj)
-            obj.ledListener = addListener( ...
+            obj.ledListener = addlistener( ...
                 obj.led, ...
                 'SetConfigurationSetting', ...
                 @obj.onLedSetConfigurationSetting);
@@ -99,12 +105,7 @@ classdef GainSettingsRow < handle
         end
         
         function onButtonPushed(obj, ~, ~, name)
-            if ~strcmp(name, obj.currentlySelected)
-                obj.led.setConfigurationSetting('gain', name);
-                for i = 1:numel(obj.gainNames)
-                    obj.setButtonState(name, strcmp(name, obj.gainNames{i}));                    
-                end
-            end
+            obj.led.setConfigurationSetting('gain', name);
         end
         
         function setButtonState(obj, name, state)
@@ -116,12 +117,12 @@ classdef GainSettingsRow < handle
             end
         end
         
-        function setGainNames(obj)     
+        function setGainNames(obj) 
             descriptors = obj.led.getConfigurationSettingDescriptors();
             gainOptions = descriptors.findByName('gain').type.domain;
             notEmpty = false(size(gainOptions));
             for i = 1:numel(gainOptions)
-               if isempty(gainOptions{i})
+               if ~isempty(gainOptions{i})
                   notEmpty(i) = true; 
                end
             end
@@ -133,15 +134,16 @@ classdef GainSettingsRow < handle
         end
         
         function clr = determinSelectedColor(obj)
-           switch obj.ledName
-               case {'UV', 'uv', 'Uv'}
-                   clr = obj.UV_SELECTED;
-               case {'BLUE', 'blue', 'Blue'}
-                   clr = obj.BLUE_SELECTED;
-               case {'GREEN', 'green', 'Green'}
-                   clr = obj.GREEN_SELECTED;
-               case {'RED', 'red', 'Red'}
-                   clr = obj.RED_SELECTED;
+           if sum(regexpi(obj.ledName, 'uv'))
+               clr = obj.UV_SELECTED;
+           elseif sum(regexpi(obj.ledName, 'blue'))
+               clr = obj.BLUE_SELECTED;
+           elseif sum(regexpi(obj.ledName, 'green'))
+               clr = obj.GREEN_SELECTED;
+           elseif sum(regexpi(obj.ledName, 'red'))
+               clr = obj.RED_SELECTED;
+           else
+               clr = [0.8 0.8 0.8];
            end
         end
         

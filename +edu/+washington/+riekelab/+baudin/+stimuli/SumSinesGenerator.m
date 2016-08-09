@@ -29,8 +29,8 @@ classdef SumSinesGenerator < symphonyui.core.StimulusGenerator
             
             % if the user forgot to specify a phase, or didn't specify
             % enough, make the phase offsets all zero
-            if numel(obj.phase) ~= numel(obj.amplitude)
-                obj.phase = zeros(size(obj.amplitude));
+            if numel(obj.phases) ~= numel(obj.frequencies)
+                obj.phases = zeros(size(obj.frequencies));
             end
             
         end  
