@@ -1,5 +1,5 @@
 classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
-
+    
     % presents a series of flashes before, during and an adapting step;
     % intended to evaluate the time scale of adaptation
     
@@ -10,10 +10,10 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         stepStim = 1500                 % Step duration (ms)
         stepTail = 1500                 % Time following step (ms)
         
-        meanMagnitude = 0               % Magnitude of LED stimulus before and after the step (V)
+        baselineMagnitude = 0               % Magnitude of LED stimulus before and after the step (V)
         stepMagnitude = 0               % Magnitude of LED stimulus during the step (V)
         
-        flashDurations = 10             % Duration of flashes (ms)
+        flashDuration = 10             % Duration of flashes (ms)
         
         fixedPreFlashTime = 100         % Time of fixed pre step flash (ms)
         fixedStepFlashTime = 1000       % Time, following step onset, of fixed flash (ms)
@@ -22,11 +22,11 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         fixedPreFlashAmp = 0            % Amplitude of fixed flash during time before step (V)
         fixedStepFlashAmp = 0           % Amplitude of fixed flash during step (V)
         fixedPostFlashAmp = 0           % Amplitude of fixed flash following step (V)
-
+        
         
         variableStepFlashAmp = 0        % Amplitude of variable step following flash onset (V)
         variablePostFlashAmp = 0        % Amplitude of variable step following flash offset (V)
-
+        
         variableFlashTimes = [10 20 40 80 160 320] % Times, following step onset or offset, of variable flashes (ms)
         
         amp                             % Input amplifier
@@ -36,14 +36,14 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         amp2                            % Secondary amplifier
     end
     
-    properties 
+    properties
         numberOfAverages = uint16(5)    % Number of families
         interpulseInterval = 0          % Duration between pulses (s)
     end
     
     properties (Dependent, Hidden = true)
-       totalTime
-       numFlashTimes
+        totalTime
+        numFlashTimes
     end
     
     properties (Hidden)
@@ -98,60 +98,64 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function [stim, variableFlashTime] = createLedStimulus(obj, epochNum)
-            variableFlashTime = obj.determineVariableFlashTime(epochNum);
-            
-            % make flashes
-            flashPreTimes = [obj.fixedPreFlashTime ...
-                obj.stepPre + variableFlashTime ...
-                obj.stepPre + obj.fixedStepFlashTime ...
-                obj.stepPre + obj.stepStim + variableFlashTime ...
-                obj.stepPre + obj.stepStim + obj.fixedPostFlashTime];
-            
-            flashTailTimes = obj.totalTime - flashPreTimes;
-            
-            flashAmplitudes = [obj.fixedPreFlashAmp ...
-                obj.variableStepFlashAmp ...
-                obj.fixedStepFlashAmp ...
-                obj.variablePostFlashAmp ...
-                obj.fixedPostFlashAmp];
-                
-            flashStimuli = cell(1, 5);
-            for i = 1:5
-                gen = symphonyui.builtin.stimuli.PulseGenerator();
-                
-                gen.preTime = flashPreTimes(i);
-                gen.stimTime = obj.flashDurations;
-                gen.tailTime = flashTailTimes(i) - obj.flashDurations;
-                gen.amplitude = flashAmplitudes(i);
-                gen.mean = 0;
-                gen.sampleRate = obj.sampleRate;
-                gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
-                
-                flashStimuli{i} = gen.generate();
-            end
-        
-            % now make step
+            % make step
             gen = symphonyui.builtin.stimuli.PulseGenerator();
             
             gen.preTime = obj.stepPre;
             gen.stimTime = obj.stepStim;
             gen.tailTime = obj.stepTail;
-            gen.amplitude = obj.stepMagnitude - obj.meanMagnitude;
+            gen.amplitude = obj.stepMagnitude - obj.baselineMagnitude;
             gen.mean = obj.meanMagnitude;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
             
-            stepStimulus = gen.generate();
+            stim = gen.generate();
             
-            % sum them into one stimulus
-            sumGen = symphonyui.builtin.stimuli.SumGenerator();
-            sumGen.stimuli = {stepStimulus, flashStimuli{:}};
-            stim = sumGen.generate();
-        end
+            % make variable flashes
+            variableFlashTime = obj.determineVariableFlashTime(epochNum);
+            
+            % make flashes - if the flash time is -1, it means no flashes
+            if variableFlashTime >= 0
+                flashPreTimes = [obj.fixedPreFlashTime ...
+                    obj.stepPre + variableFlashTime ...
+                    obj.stepPre + obj.fixedStepFlashTime ...
+                    obj.stepPre + obj.stepStim + variableFlashTime ...
+                    obj.stepPre + obj.stepStim + obj.fixedPostFlashTime];
                 
+                flashAmplitudes = [obj.fixedPreFlashAmp ...
+                    obj.variableStepFlashAmp ...
+                    obj.fixedStepFlashAmp ...
+                    obj.variablePostFlashAmp ...
+                    obj.fixedPostFlashAmp];
+                
+                flashTailTimes = obj.totalTime - flashPreTimes;
+                
+                flashStimuli = cell(1, numel(flashPreTimes));
+                for i = 1:5
+                    gen = symphonyui.builtin.stimuli.PulseGenerator();
+                    
+                    gen.preTime = flashPreTimes(i);
+                    gen.stimTime = obj.flashDuration;
+                    gen.tailTime = flashTailTimes(i) - obj.flashDuration;
+                    gen.amplitude = flashAmplitudes(i);
+                    gen.mean = 0;
+                    gen.sampleRate = obj.sampleRate;
+                    gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
+                    
+                    flashStimuli{i} = gen.generate();
+                end
+                
+                % sum them into one stimulus
+                sumGen = symphonyui.builtin.stimuli.SumGenerator();
+                sumGen.stimuli = [{stim} flashStimuli];
+                stim = sumGen.generate();
+            end 
+        end
+        
         function time = determineVariableFlashTime(obj, epochNum)
-            idx = mod(epochNum - 1, obj.numFlashTimes) + 1;
-            time = obj.variableFlashTimes(idx);
+            idx = mod(epochNum - 1, obj.numFlashTimes + 1) + 1;
+            flashTimes = [-1 obj.variableFlashTimes];
+            time = flashTimes(idx);
         end
         
         function prepareEpoch(obj, epoch)
@@ -159,7 +163,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             epochNum = obj.numEpochsPrepared;
             [stim, variableFlashTime] = obj.createLedStimulus(epochNum);
-
+            
             epoch.addParameter('variableFlashTime', variableFlashTime);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
@@ -183,7 +187,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         function tf = shouldContinueRun(obj)
             tf = obj.numEpochsCompleted < obj.numberOfAverages * obj.numFlashTimes;
         end
-                
+        
         function a = get.amp2(obj)
             amps = obj.rig.getDeviceNames('Amp');
             if numel(amps) < 2
@@ -195,11 +199,11 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function value = get.totalTime(obj)
-           value = obj.stepPre + obj.stepStim + obj.stepTail;
+            value = obj.stepPre + obj.stepStim + obj.stepTail;
         end
         
         function value = get.numFlashTimes(obj)
-           value = numel(obj.variableFlashTimes); 
+            value = numel(obj.variableFlashTimes);
         end
         
     end
