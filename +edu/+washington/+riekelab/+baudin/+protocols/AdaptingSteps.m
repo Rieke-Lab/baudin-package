@@ -65,7 +65,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             p = symphonyui.builtin.previews.StimuliPreview(panel, @()createPreviewStimuli(obj));
             function s = createPreviewStimuli(obj)
                 s = cell(1, obj.numFlashTimes);
-                for i = 1:obj.numFlashTimes
+                for i = 1:obj.numFlashTimes + 1
                     s{i} = obj.createLedStimulus(i);
                 end
             end
@@ -94,7 +94,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
             
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.meanMagnitude, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement(obj.baselineMagnitude, device.background.displayUnits);
         end
         
         function [stim, variableFlashTime] = createLedStimulus(obj, epochNum)
@@ -105,7 +105,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.stimTime = obj.stepStim;
             gen.tailTime = obj.stepTail;
             gen.amplitude = obj.stepMagnitude - obj.baselineMagnitude;
-            gen.mean = obj.meanMagnitude;
+            gen.mean = obj.baselineMagnitude;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
             
@@ -181,11 +181,11 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.numberOfAverages * obj.numFlashTimes;
+            tf = obj.numEpochsPrepared < obj.numberOfAverages * (obj.numFlashTimes + 1);
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.numberOfAverages * obj.numFlashTimes;
+            tf = obj.numEpochsCompleted < obj.numberOfAverages * (obj.numFlashTimes + 1);
         end
         
         function a = get.amp2(obj)
