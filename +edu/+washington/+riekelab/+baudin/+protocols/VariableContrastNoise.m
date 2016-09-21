@@ -22,22 +22,13 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
         numberOfAverages = uint16(5)    % Number of families
         interpulseInterval = 0          % Duration between noise stimuli (s)
     end
-    
-    properties (Hidden, Dependent)
-        pulsesInFamily
-    end
-    
+        
     properties (Hidden)
         ledType
         ampType
     end
     
     methods
-        
-        function n = get.pulsesInFamily(obj)
-            n = obj.stdvMultiples * obj.repeatsPerStdv;
-        end
-        
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
@@ -73,16 +64,13 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
-                    'groupBy', {'stdv'});
+                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
-                    'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
+                    'measurementRegion', [obj.preTime obj.preTime+obj.firstStimTime+obj.secondStimTime]);
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
-                obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2), ...
-                    'groupBy1', {'stdv'}, ...
-                    'groupBy2', {'stdv'});
+                obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, obj.rig.getDevice(obj.amp2), {@mean, @var}, ...
                     'baselineRegion1', [0 obj.preTime], ...
                     'measurementRegion1', [obj.preTime obj.preTime+obj.stimTime], ...
@@ -153,12 +141,11 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
             persistent seed;
             if ~obj.useRandomSeed
                 seed = 0;
-            elseif mod(obj.numEpochsPrepared - 1, obj.repeatsPerStdv) == 0
+            else
                 seed = RandStream.shuffleSeed;
             end
-            
-            pulseNum = mod(obj.numEpochsPrepared - 1, obj.pulsesInFamily) + 1;
-            stim = obj.createLedStimulus(pulseNum, seed);
+
+            stim = obj.createLedStimulus(seed);
             
             epoch.addParameter('seed', seed);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);

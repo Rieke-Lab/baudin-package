@@ -40,9 +40,9 @@ classdef VariableTimePosNegSteps < edu.washington.riekelab.protocols.RiekeLabPro
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
-                'baselineRegion', [0 obj.preTime], ...
-                'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
+            
+                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
+                    'groupBy', {'StepTime', 'Contrast'});
             
             obj.rig.getDevice(obj.led).background = symphonyui.core.Measurement(obj.lightMean, 'V');
         end
@@ -56,7 +56,6 @@ classdef VariableTimePosNegSteps < edu.washington.riekelab.protocols.RiekeLabPro
             gen.tailTime = obj.tailTime;
             gen.amplitude = obj.percentContrastToVolts( ...
                 obj.determineContrast(epochNum));
-            disp(gen.amplitude);
             gen.mean = obj.lightMean;
             gen.sampleRate = obj.sampleRate;
             gen.units = 'V';
