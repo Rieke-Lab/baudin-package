@@ -41,8 +41,10 @@ classdef VariableTimePosNegSteps < edu.washington.riekelab.protocols.RiekeLabPro
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             
-                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
-                    'groupBy', {'StepTime', 'Contrast'});
+            obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
+                'groupBy', {'StepTime', 'Contrast'});
+            
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.totalEpochs)
             
             obj.rig.getDevice(obj.led).background = symphonyui.core.Measurement(obj.lightMean, 'V');
         end

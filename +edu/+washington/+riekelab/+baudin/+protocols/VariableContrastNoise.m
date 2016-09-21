@@ -68,6 +68,7 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
                     'measurementRegion', [obj.preTime obj.preTime+obj.firstStimTime+obj.secondStimTime]);
+                obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.numberOfAverages)
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));

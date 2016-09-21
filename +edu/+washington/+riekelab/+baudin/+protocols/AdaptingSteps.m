@@ -44,6 +44,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties (Dependent, Hidden = true)
         totalTime
         numFlashTimes
+        totalEpochs
     end
     
     properties (Hidden)
@@ -81,6 +82,7 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.stepPre], ...
                     'measurementRegion', [obj.stepPre obj.stepPre+obj.stepStim]);
+                obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.totalEpochs)
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2), ...
@@ -181,11 +183,15 @@ classdef AdaptingSteps < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.numberOfAverages * (obj.numFlashTimes + 1);
+            tf = obj.numEpochsPrepared < obj.totalEpochs;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.numberOfAverages * (obj.numFlashTimes + 1);
+            tf = obj.numEpochsCompleted < obj.totalEpochs;
+        end
+        
+        function value = get.totalEpochs(obj)
+            value = obj.numberOfAverages * (obj.numFlashTimes + 1)
         end
         
         function a = get.amp2(obj)
