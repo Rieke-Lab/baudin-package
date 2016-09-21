@@ -87,7 +87,7 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
             
             % generate a stimulus with two generators
             % make the first noise stimulus
-            gen1 = edu.washington.riekelab.stimuli.GaussianNoiseGenerator();
+            gen1 = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             gen1.preTime = obj.preTime;
             gen1.stimTime = obj.firstStimTime;
             gen1.tailTime = obj.secondStimTime + obj.tailTime;
@@ -109,7 +109,7 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
             stim1 = gen1.generate();
             
             % make the second noise stimulus
-            gen2 = edu.washington.riekelab.stimuli.GaussianNoiseGenerator();
+            gen2 = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             gen2.preTime = obj.preTime + obj.firstStimTime;
             gen2.stimTime = obj.secondStimTime;
             gen2.tailTime = obj.tailTime;
