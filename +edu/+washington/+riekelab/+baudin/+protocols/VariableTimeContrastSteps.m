@@ -47,7 +47,7 @@ classdef VariableTimeContrastSteps < edu.washington.riekelab.protocols.RiekeLabP
             obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
                 'groupBy', {'StepTime', 'Contrast'});
             
-            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.totalEpochs)
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.totalEpochs);
             
             obj.rig.getDevice(obj.led).background = symphonyui.core.Measurement(obj.lightMean, 'V');
         end
@@ -93,7 +93,7 @@ classdef VariableTimeContrastSteps < edu.washington.riekelab.protocols.RiekeLabP
         end
         
         function contrast = determineContrast(obj, epochNum)
-            magnitude = obj.contrast(obj.determineContrastIdx(epochNum));
+            magnitude = obj.contrasts(obj.determineContrastIdx(epochNum));
             contrast = 2 * (mod(epochNum, 2) - 0.5) * magnitude;
         end
         

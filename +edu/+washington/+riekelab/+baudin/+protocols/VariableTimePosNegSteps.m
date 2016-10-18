@@ -52,10 +52,10 @@ classdef VariableTimePosNegSteps < edu.washington.riekelab.protocols.RiekeLabPro
         function stim = createLedStimulus(obj, epochNum)
             
             gen = symphonyui.builtin.stimuli.PulseGenerator();
-            
+            stimTime = obj.determineStepTime(epochNum);
             gen.preTime = obj.preTime;
-            gen.stimTime = obj.determineStepTime(epochNum);
-            gen.tailTime = obj.tailTime;
+            gen.stimTime = stimTime;
+            gen.tailTime = max(obj.tailTime, 2 * stimTime);
             gen.amplitude = obj.percentContrastToVolts( ...
                 obj.determineContrast(epochNum));
             gen.mean = obj.lightMean;
