@@ -1,19 +1,12 @@
-classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
-    % Presents a set of rectangular pulse stimuli to a specified amplifier and records from the same amplifier.
+classdef Picospritzer < edu.washington.riekelab.protocols.RiekeLabProtocol
+    % Applies a pulse to the picospritzer.
     
     properties
         amp                             % Output amplifier
         preTime = 50                    % Pulse leading duration (ms)
         stimTime = 500                  % Pulse duration (ms)
         tailTime = 50                   % Pulse trailing duration (ms)
-        frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
-        numberOfFilters = 4             % Number of filters in cascade for noise smoothing
-        startStdv = 0.005               % First noise standard deviation, post-smoothing (mV or pA depending on amp mode)
-        stdvMultiplier = 3              % Amount to multiply the starting standard deviation by with each new multiple
-        stdvMultiples = uint16(3)       % Number of standard deviation multiples in family
-        repeatsPerStdv = uint16(5)      % Number of times to repeat each standard deviation multiple
-        useRandomSeed = false           % Use a random seed for each standard deviation multiple?
-        currentMean = 0.1               % Mean current amplitude (mV or pA depending on amp mode) 
+        ampHoldSignal = -60
     end
     
     properties (Dependent, SetAccess = private)
@@ -46,7 +39,7 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function p = getPreview(obj, panel)
-            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createAmpStimulus());
+            p = symphonyui.builtin.previews.StimuliPreview(panel, @()obj.createPicoStimulus());
         end
         
         function prepareRun(obj)
@@ -69,48 +62,52 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
-        function stim = createAmpStimulus(obj, pulseNum, seed)
-            sdNum = floor((double(pulseNum) - 1) / double(obj.repeatsPerStdv));
-            stdv = obj.stdvMultiplier^sdNum * obj.startStdv;
-            
-            gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
+        function stim = createPicoStimulus(obj)
+            gen = symphonyui.builtin.stimuli.PulseGenerator();
             
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
-            gen.stDev = stdv;
-            gen.freqCutoff = obj.frequencyCutoff;
-            gen.numFilters = obj.numberOfFilters;
-            gen.mean = obj.lightMean;
-            gen.seed = seed;
+            gen.amplitude = 1;
+            gen.mean = obj.rig.getDevice(obj.amp).background.quantity;
             gen.sampleRate = obj.sampleRate;
-            gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
+            gen.units = obj.rig.getDevice(obj.amp).background.displayUnits;
+            
+            stim = gen.generate(); 
+        end
+        
+        function stim = createAmpStimulus(obj)
+            gen = symphonyui.builtin.stimuli.PulseGenerator();
+            
+            gen.preTime = obj.preTime;
+            gen.stimTime = obj.stimTime;
+            gen.tailTime = obj.tailTime;
+            gen.amplitude = 0;
+            gen.mean = obj.ampHoldSignal;
+            gen.sampleRate = obj.sampleRate;
+            gen.units = obj.rig.getDevice(obj.amp).background.displayUnits;
             
             stim = gen.generate();
         end
         
-        function stim = createAmp2Stimulus(obj, pulseNum, seed)
-            sdNum = floor((double(pulseNum) - 1) / double(obj.repeatsPerStdv));
-            stdv = obj.stdvMultiplier^sdNum * obj.startStdv;
-            
-            gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
+        function stim = createAmp2Stimulus(obj)
+            gen = symphonyui.builtin.stimuli.PulseGenerator();
             
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
-            gen.stDev = stdv;
-            gen.freqCutoff = obj.frequencyCutoff;
-            gen.numFilters = obj.numberOfFilters;
-            gen.mean = obj.lightMean;
-            gen.seed = seed;
+            gen.amplitude = 0;
+            gen.mean = obj.ampHoldSignal;
             gen.sampleRate = obj.sampleRate;
-            gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
+            gen.units = obj.rig.getDevice(obj.amp).background.displayUnits;
             
             stim = gen.generate();
         end
         
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
+            
+            epoch.addStimulus(obj.rig.getDevice('Picospritzer'), obj.createPicoStimulus());
             
             epoch.addStimulus(obj.rig.getDevice(obj.amp), obj.createAmpStimulus());
             epoch.addResponse(obj.rig.getDevice(obj.amp));
