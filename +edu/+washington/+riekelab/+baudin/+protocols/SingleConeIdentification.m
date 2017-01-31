@@ -1,4 +1,4 @@
-classdef CheckerboardNoise < edu.washington.riekelab.protocols.RiekeLabStageProtocol
+classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
         preTime = 500 % ms
@@ -12,14 +12,12 @@ classdef CheckerboardNoise < edu.washington.riekelab.protocols.RiekeLabStageProt
         useRandomSeed = true % false = repeated noise trajectory (seed 0)
         centerOffset = [0,0];
         backgroundIntensity = 0.5 % (0-1)
-        onlineAnalysis = 'none'
         numberOfAverages = uint16(20) % number of epochs to queue
         amp % Output amplifier
     end
 
     properties (Hidden)
         ampType
-        onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
         noiseSeed
         noiseStream
         numChecksX
