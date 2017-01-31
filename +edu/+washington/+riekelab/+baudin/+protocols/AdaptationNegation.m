@@ -3,10 +3,10 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
     % adaptation of a cone in response to the modified stimulus.
     
     properties
-        led                             % Output LED
-        stimulusPath                    % Path of .mat file containing original and modified stimulus vectors
-        isomPerVolt                     % Isomerizations per volt on currently selected LED
-        amp                             % Input amplifier
+        led                                 % Output LED
+        stimulusPath = 'enter path here'    % Path of .mat file containing original and modified stimulus vectors
+        isomPerVolt = 1000                  % Isomerizations per volt on currently selected LED
+        amp                                 % Input amplifier
     end
     
     properties (Dependent, SetAccess = private)
@@ -22,6 +22,8 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         ledType
         ampType
         stimulusPathType = symphonyui.core.PropertyType('char', 'row');
+        originalGenerator
+        modifiedGenerator
     end
     
     properties (Dependent, Hidden = true)
@@ -54,35 +56,30 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
+            obj.createStimulusGenerators();
+            
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
                 obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
                     'groupBy', {'stimulusType'});
-                obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
-                    'baselineRegion', [0 obj.preTime], ...
-                    'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2), ...
                     'groupBy1', {'stimulusType'}, ...
                     'groupBy2', {'stimulusType'});
-                obj.showFigure('edu.washington.riekelab.figures.DualResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, obj.rig.getDevice(obj.amp2), {@mean, @var}, ...
-                    'baselineRegion1', [0 obj.preTime], ...
-                    'measurementRegion1', [obj.preTime obj.preTime+obj.stimTime], ...
-                    'baselineRegion2', [0 obj.preTime], ...
-                    'measurementRegion2', [obj.preTime obj.preTime+obj.stimTime]);
             end
             
-            obj.createStimulusGenerators();
+            
             
             device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.lightMean, device.background.displayUnits);
+            device.background = symphonyui.core.Measurement( ...
+                obj.originalGenerator.waveshape(1), device.background.displayUnits);
         end
         
         function createStimulusGenerators(obj)
             stimulusVectors = load(obj.stimulusPath);
-            obj.originalGenerator = createGenerator(stimulusVectors.original);
-            obj.modifiedGenerator = createGenerator(stimulusVectors.modified);
+            obj.originalGenerator = obj.createGenerator(stimulusVectors.original);
+            obj.modifiedGenerator = obj.createGenerator(stimulusVectors.modified);
         end
         
         function gen = createGenerator(obj, vector)
@@ -105,7 +102,8 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             % boolean to control whether or not modified stimulus vector is
             % used (every other epoch, so if epochNum is even)
-            useModified = iseven(obj.numEpochsPrepared);
+            % useModified = iseven(obj.numEpochsPrepared);
+            useModified = mod(obj.numEpochsPrepared, 2) == 0;
             if useModified
                 epoch.addParameter('stimulusType', 'modified');
             else

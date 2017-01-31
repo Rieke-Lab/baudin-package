@@ -13,11 +13,15 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
         stdvMultiples = uint16(3)       % Number of standard deviation multiples in family
         repeatsPerStdv = uint16(5)      % Number of times to repeat each standard deviation multiple
         useRandomSeed = false           % Use a random seed for each standard deviation multiple?
-        currentMean = 0.1               % Mean current amplitude (mV or pA depending on amp mode) 
+        currentMean = 0.1               % Mean current amplitude (mV or pA depending on amp mode)
     end
     
     properties (Dependent, SetAccess = private)
         amp2                            % Secondary amplifier
+    end
+    
+    properties (Hidden, Dependent)
+        pulsesInFamily
     end
     
     properties
@@ -30,6 +34,10 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
     
     methods
+        
+        function n = get.pulsesInFamily(obj)
+            n = obj.stdvMultiples * obj.repeatsPerStdv;
+        end
         
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
@@ -69,7 +77,7 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             end
         end
         
-        function stim = createAmpStimulus(obj, pulseNum, seed)
+        function [stim, stdv] = createAmpStimulus(obj, pulseNum, seed)
             sdNum = floor((double(pulseNum) - 1) / double(obj.repeatsPerStdv));
             stdv = obj.stdvMultiplier^sdNum * obj.startStdv;
             
@@ -84,7 +92,7 @@ classdef CurrentNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.mean = obj.currentMean;
             gen.seed = seed;
             gen.sampleRate = obj.sampleRate;
-            gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
+            gen.units = obj.rig.getDevice(obj.amp).background.displayUnits;
             
             stim = gen.generate();
         end
