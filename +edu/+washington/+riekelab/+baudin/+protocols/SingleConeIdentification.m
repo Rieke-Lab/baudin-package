@@ -5,19 +5,19 @@ classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabSt
         stimTime = 20000 % ms
         tailTime = 500 % ms
         stixelSize = 30 % um
-        apertureDiameter = 0 % um
         binaryNoise = true %binary checkers - overrides noiseStdv
         noiseStdv = 0.3 %contrast, as fraction of mean
         frameDwell = 1 % Frames per noise update
         useRandomSeed = true % false = repeated noise trajectory (seed 0)
-        centerOffset = [0,0];
         backgroundIntensity = 0.5 % (0-1)
+        onlineAnalysis = 'none'
         numberOfAverages = uint16(20) % number of epochs to queue
         amp % Output amplifier
     end
 
     properties (Hidden)
         ampType
+        onlineAnalysisType = symphonyui.core.PropertyType('char', 'row', {'none', 'extracellular', 'exc', 'inh'})
         noiseSeed
         noiseStream
         numChecksX
@@ -35,7 +35,7 @@ classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabSt
             prepareRun@edu.washington.riekelab.protocols.RiekeLabStageProtocol(obj);
 
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.baudin.figures.FrameTimingFigure',...
+            obj.showFigure('edu.washington.riekelab.turner.figures.FrameTimingFigure',...
                 obj.rig.getDevice('Stage'), obj.rig.getDevice('Frame Monitor'));
             if ~strcmp(obj.onlineAnalysis,'none')
                 obj.showFigure('edu.washington.riekelab.baudin.figures.StrfFigure',...
@@ -80,16 +80,12 @@ classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabSt
             p.setBackgroundColor(obj.backgroundIntensity); % Set background intensity
             
             canvasSize = obj.rig.getDevice('Stage').getCanvasSize();
-            centerOffsetPix = obj.rig.getDevice('Stage').um2pix(obj.centerOffset);
-            
-             %convert from microns to pixels...
-            apertureDiameterPix = obj.rig.getDevice('Stage').um2pix(obj.apertureDiameter);
             
             % Create checkerboard
             initMatrix = uint8(255.*(obj.backgroundIntensity .* ones(obj.numChecksY,obj.numChecksX)));
             board = stage.builtin.stimuli.Image(initMatrix);
             board.size = canvasSize;
-            board.position = canvasSize/2 + centerOffsetPix;
+            board.position = canvasSize/2;
             board.setMinFunction(GL.NEAREST); %don't interpolate to scale up board
             board.setMagFunction(GL.NEAREST);
             p.addStimulus(board);
@@ -97,7 +93,6 @@ classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabSt
             checkerboardController = stage.builtin.controllers.PropertyController(board, 'imageMatrix',...
                 @(state)getNewCheckerboard(obj, state.frame - preFrames));
             p.addController(checkerboardController); %add the controller
-            
             function i = getNewCheckerboard(obj, frame)
                 persistent boardMatrix;
                 if frame<0 %pre frames. frame 0 starts stimPts
@@ -115,16 +110,6 @@ classdef SingleConeIdentification < edu.washington.riekelab.protocols.RiekeLabSt
                     end
                 end
                 i = uint8(255 * boardMatrix);
-            end
-            
-            if (obj.apertureDiameter > 0) %% Create aperture
-                aperture = stage.builtin.stimuli.Rectangle();
-                aperture.position = canvasSize/2 + centerOffsetPix;
-                aperture.color = obj.backgroundIntensity;
-                aperture.size = [max(canvasSize) max(canvasSize)];
-                mask = stage.core.Mask.createCircularAperture(apertureDiameterPix/max(canvasSize), 1024); %circular aperture
-                aperture.setMask(mask);
-                p.addStimulus(aperture); %add aperture
             end
 
             % hide during pre & post

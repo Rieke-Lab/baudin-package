@@ -10,14 +10,18 @@ classdef StrfFigure < symphonyui.core.FigureHandler
         frameDwell
         seedID
         binaryNoise
+        filterLength
+        frequencyCutoffFraction
+        filterIntegrationTime
     end
     
     properties (Access = private)
         axesHandle
         imHandle
         noiseStream
-        newFilter
+        filterAverage
         epochCount
+        lightCrafterFlag
     end
     
     methods
@@ -33,6 +37,9 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             ip.addParameter('frameDwell', [], @(x)isvector(x));
             ip.addParameter('seedID', 'noiseSeed', @(x)ischar(x));
             ip.addParameter('binaryNoise', true, @(x)islogical(x));
+            ip.addParameter('FilterLength', 800, @(x) isnumeric(x));
+            ip.addParameter('FrequencyCutoffFraction', 0.8, @(x) isnumeric(x) && x < 1);
+            ip.addParameter('FilterIntegrationTime', 120, @(x) isnumeric(x));
             ip.parse(varargin{:});
             
             obj.recordingType = ip.Results.recordingType;
@@ -41,12 +48,24 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             obj.frameDwell = ip.Results.frameDwell;
             obj.seedID = ip.Results.seedID;
             obj.binaryNoise = ip.Results.binaryNoise;
-
+            obj.filterLength = ip.Results.FilterLength;
+            obj.frequencyCutoffFraction = ip.Results.FrequencyCutoffFraction;
+            obj.lightCrafterFlag = obj.IsLightCrafter();
+            
             obj.epochCount = 0;
-            obj.newFilter = 0;
+            obj.filterAverage = 0;
             obj.createUi();
         end
-
+        
+        function tf = obj.IsLightCrafter(obj)
+            % determine device type
+            if isa(obj.stageDevice,'edu.washington.riekelab.devices.LightCrafterDevice')
+                tf = 1;
+            else % OLED stage device
+                tf = 0;
+            end
+        end
+        
         function createUi(obj)
             import appbox.*;
             toolbar = findall(obj.figureHandle, 'Type', 'uitoolbar');
@@ -56,7 +75,7 @@ classdef StrfFigure < symphonyui.core.FigureHandler
                 'Separator', 'on', ...
                 'ClickedCallback', @obj.onSelectedPlayStrf);
             setIconImage(playStrfButton, symphonyui.app.App.getResource('icons/view_only.png'));
-
+            
             obj.axesHandle = axes( ...
                 'Parent', obj.figureHandle, ...
                 'FontName', get(obj.figureHandle, 'DefaultUicontrolFontName'), ...
@@ -65,109 +84,126 @@ classdef StrfFigure < symphonyui.core.FigureHandler
             xlabel(obj.axesHandle, '');
             ylabel(obj.axesHandle, '');
             
-
+            
             obj.figureHandle.Name ='STRF';
         end
-
+        
         function handleEpoch(obj, epoch)
             obj.epochCount = obj.epochCount + 1;
-            %load amp data
-            response = epoch.getResponse(obj.ampDevice);
-            epochResponseTrace = response.getData();
-            sampleRate = response.sampleRate.quantityInBaseUnits;
-            prePts = sampleRate*obj.preTime/1000;
+            
+            % load data
+            response = obj.CollectAndPreprocessResponse(epoch);
+
+            % get frame times
+            frameRate = obj.stageDevice.getMonitorRefreshRate();
+            updateRate = (frameRate / obj.frameDwell);
+            frameMonResponse = epoch.getResponse(obj.frameMonitor).getData();
+            frameTimes = edu.washington.riekelab.turner.utils.getFrameTiming(frameMonResponse, obj.lightCrafterFlag);
+            
+            % crop response to remove anything before stimulus began
+            preFrames = frameRate * (obj.preTime / 1000);
+            firstStimFrameFlip = frameTimes(preFrames + 1);
+            response = response(firstStimFrameFlip:end);
+            
+            % figure out stim frames and get average response per frame
+            stimFrames = round(frameRate * (obj.stimTime / 1e3));
+            responsePerFrame = mean(reshape(response, [ stimFrames]), 1);
+            
+            % recreate stimulus
+            stimulus = obj.RegenerateStimulus(epoch, frameRate);
+
+            % compute filters, then normalize
+            filterPts = (obj.filterLength / 1000) * updateRate;
+            currFilters = obj.ComputeFilters(stimulus, responsePerFrame, filterPts, updateRate);
+            currFilters = currFilters / max(currFilters(:));
+            
+            % update filter average
+            obj.filterAverage = ((obj.epochCount - 1) * obj.filterAverage + currFilters) / obj.epochCount;
+            
+            % apply updated integrated average to plot
+            obj.UpdateImage(sum(obj.filterAverage(:, :, 1:integrationPts)));
+        end
+        
+        function response = CollectAndPreprocessResponse(obj, epoch)
+            response = epoch.getResponse(obj.ampDevice).getData();
+            sampleRate = epoch.getResponse(obj.ampDevice).sampleRate.quantityInBaseUnits;
+            prePts = sampleRate * obj.preTime / 1000;
+            
             if strcmp(obj.recordingType,'extracellular') %spike recording
-                newResponse = zeros(size(epochResponseTrace));
-                %count spikes
-                S = edu.washington.riekelab.baudin.utils.spikeDetectorOnline(epochResponseTrace);
-                newResponse(S.sp) = 1;
+                % convert response to vector of spikes
+                spikes = edu.washington.riekelab.turner.utils.spikeDetectorOnline(response);
+                response = zeros(size(response));
+                response(spikes.sp) = 1;
+                
             else %intracellular - Vclamp
-                epochResponseTrace = epochResponseTrace-mean(epochResponseTrace(1:prePts)); %baseline
+                % zero baseline and give response correct polarity
+                response = response - mean(response(1:prePts));
                 if strcmp(obj.recordingType,'exc') %measuring exc
                     polarity = -1;
                 elseif strcmp(obj.recordingType,'inh') %measuring inh
                     polarity = 1;
                 end
-                newResponse = polarity * epochResponseTrace;
+                response = polarity * response;
             end
-            %load frame monitor data
-            if isa(obj.stageDevice,'edu.washington.riekelab.devices.LightCrafterDevice')
-                lightCrafterFlag = 1;
-            else %OLED stage device
-                lightCrafterFlag = 0;
-            end
-            frameRate = obj.stageDevice.getMonitorRefreshRate();
-            FMresponse = epoch.getResponse(obj.frameMonitor);
-            FMdata = FMresponse.getData();
-            frameTimes = edu.washington.riekelab.baudin.utils.getFrameTiming(FMdata,lightCrafterFlag);
-            preFrames = frameRate*(obj.preTime/1000);
-            firstStimFrameFlip = frameTimes(preFrames+1);
-            newResponse = newResponse(firstStimFrameFlip:end); %cut out pre-frames
-            
-            %reconstruct noise stimulus
-            filterLen = 800; %msec, length of linear filter to compute
-            %fraction of noise update rate at which to cut off filter spectrum
-            freqCutoffFraction = 0.8;
-            
+        end
+        
+        function stim = RegenerateStimulus(obj, epoch)
             currentNoiseSeed = epoch.parameters(obj.seedID);
             numChecksX = epoch.parameters('numChecksX');
             numChecksY = epoch.parameters('numChecksY');
-            %reconstruct stimulus trajectories...
-            stimFrames = round(frameRate * (obj.stimTime/1e3));
-            response = zeros(1, floor(stimFrames/obj.frameDwell));
-            %reset random stream to recover stim trajectories
+            
+            stimFrames = round(frameRate * (obj.stimTime / 1e3));
+            numUpdates = floor(stimFrames / obj.frameDwell);
+            
+            % reset random stream to recover stim trajectories
             obj.noiseStream = RandStream('mt19937ar', 'Seed', currentNoiseSeed);
-            % get stim trajectories and response in frame updates
-            chunkLen = obj.frameDwell*mean(diff(frameTimes));
-            noiseMatrix = zeros(numChecksY,numChecksX,floor(stimFrames/obj.frameDwell));
-            for ii = 1:floor(stimFrames/obj.frameDwell)
-                if (obj.binaryNoise)
-                    noiseMatrix(:,:,ii) = ... 
-                        obj.noiseStream.rand(numChecksY,numChecksX) > 0.5;
+            
+            stimulus = zeros(numChecksY, numChecksX, stimFrames);
+            
+            for i = 1:numUpdates
+                if obj.binaryNoise
+                    frame = obj.noiseStream.rand(numChecksY, numChecksX);
                 else
-                    noiseMatrix(:,:,ii) = ... 
-                        obj.noiseStream.randn(numChecksY,numChecksX);
+                    frame = obj.noiseStream.randn(numChecksY, numChecksX);
                 end
-                response(ii) = mean(newResponse(round((ii-1)*chunkLen + 1) : round(ii*chunkLen)));
-            end
-            updateRate = (frameRate/obj.frameDwell); %hz
-            
-            filterPts = (filterLen/1000)*updateRate;
-            
-            filterTmp = zeros(numChecksY,numChecksX,filterPts);
-            for b = 1 : size(noiseMatrix,1)
-                for c = 1 : size(noiseMatrix,2)
-                    tmp = edu.washington.riekelab.baudin.utils.getLinearFilterOnline(...
-                        squeeze(noiseMatrix(b,c,:))',...
-                        response,updateRate, freqCutoffFraction*updateRate);
-                    filterTmp(b,c,:) = tmp(1:filterPts);
+                
+                for j = 1:obj.frameDwell
+                    stimulus(:, :, (i - 1) * numUpdates + j:i * numUpdates) = frame;
                 end
-            end
-            %normalize within each epoch
-            filterTmp = filterTmp ./ max(filterTmp(:));
-            obj.newFilter = ((obj.epochCount - 1)*obj.newFilter + filterTmp) / obj.epochCount;
-            
-            filterTimes = linspace(0,filterLen,filterPts); %msec
-            targetTime = 30; %msec
-            [~, snapShotInd] = min(abs(filterTimes - targetTime));
-            if isempty(obj.imHandle)
-                obj.imHandle = imagesc(obj.newFilter(:,:,snapShotInd),...
-                    'Parent', obj.axesHandle);
-                title(obj.axesHandle,['Strf at ', num2str(filterTimes(snapShotInd)) ' msec']);
-                colormap(obj.axesHandle, gray)
-            else
-                set(obj.imHandle, 'CData', obj.newFilter(:,:,2));
             end
         end
         
+        function filters = ComputeFilters(obj, stim, resp, filterPts, updateRate)
+            % figure out cutoff in frequency domain, convert to pts
+            cutoffFreq = obj.frequencyCutoffFraction * updateRate;
+            cutoffPts = round(cutoffFreq / (updateRate / length(stimulus)));
+            
+            % calculate filters in frequency domain, do cutoff
+            filterFFTs = bsxfun(@times, fft(stim, [], 3), fft(reshape(resp, [1 1 numel(resp)]), [], 3));
+            filterFFTs(:, :, 1 + cutoffPts:size(filterFFTs, 3) - cutoffPts) = 0;
+            
+            % return to time domain and trim to specified length
+            filters = real(ifft(filterFFTs, [], 3));
+            filters = filters(:, :, filterPts);
+        end
+        
+        function UpdateImage(obj, toShow)
+            if isempty(obj.imHandle)
+                obj.imHandle = imagesc(toShow,...
+                    'Parent', obj.axesHandle);
+                title(obj.axesHandle, 'integrated linear filters');
+                colormap(obj.axesHandle, gray)
+            else
+                set(obj.imHandle, 'CData', toShow);
+            end
+        end
     end
     
     methods (Access = private)
-        
         function onSelectedPlayStrf(obj, ~, ~)
-            implay(obj.newFilter);
+            implay(obj.filterAverage);
         end
     end
-
+    
 end
 
