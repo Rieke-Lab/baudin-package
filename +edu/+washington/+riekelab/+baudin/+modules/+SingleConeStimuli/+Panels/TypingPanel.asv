@@ -1,0 +1,20 @@
+classdef TypingPanel < edu.washington.riekelab.baudin.modules.SingleConeStimuli.Panels.Panel
+    properties
+    end
+    
+    methods
+        function obj = TypingPanel(parentBox, controller)
+           obj = obj@edu.washington.riekelab.baudin.modules.SingleConeStimuli.Panels.Panel(parentBox, controller);
+           
+           obj.constructButtonsBox();
+        end
+        
+        function constructButtonsBox(obj)
+            obj.
+        end
+        
+        function onLoadImage(obj, ~, ~)
+            
+        end
+    end
+end
