@@ -27,7 +27,7 @@ classdef ImageBox < handle
             mainBox.Heights = [-1 -10];
             
             % display blank space until image is loaded
-            obj.displayImage(obj.startupImageArray());
+            obj.displayImage(0.9 * ones(300, 400, 3));
         end
         
         function displayImage(obj, imArray)
@@ -58,12 +58,6 @@ classdef ImageBox < handle
         
         function updateImage(obj, cdata)
             obj.imageObj.CData = cdata;
-        end
-    end
-    
-    methods (Static)
-        function imArray = startupImageArray()
-            imArray = 0.9 * ones(300, 400, 3);
         end
     end
 end

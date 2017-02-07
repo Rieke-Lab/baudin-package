@@ -1,7 +1,6 @@
 classdef TypingPanel < edu.washington.riekelab.baudin.modules.SingleConeStimuli.Panels.Panel
     properties
         runTypingButton
-        acceptTypingButton
     end
         
     properties (Constant)
@@ -14,6 +13,8 @@ classdef TypingPanel < edu.washington.riekelab.baudin.modules.SingleConeStimuli.
             
             obj.imageBox.setTitle('Perform cone typing.');
             obj.constructButtonsBox();
+            
+            addlistener(obj.controller, 'updatedTyping', @obj.onUpdateTyping);
         end
         
         function constructButtonsBox(obj)
@@ -32,18 +33,7 @@ classdef TypingPanel < edu.washington.riekelab.baudin.modules.SingleConeStimuli.
             uix.Empty( ...
                 'Parent', obj.buttonsBox);
             
-            obj.acceptTypingButton = edu.washington.riekelab.baudin.modules.SingleConeStimuli.Utils.addFlankedByEmptyHorizontal( ...
-                @uicontrol, obj.buttonsBox, obj.FLANKED_BUTTON_WIDTHS, ...
-                'Style', 'pushbutton', ...
-                'String', 'Accept Typing', ...
-                'Visible', 'off', ...
-                'Enable', 'off', ...
-                'Callback', @obj.onAcceptTyping);
-            
-            uix.Empty( ...
-                'Parent', obj.buttonsBox);
-            
-            obj.buttonsBox.Heights = [-1 obj.BUTTON_HEIGHT 8 obj.BUTTON_HEIGHT -9];
+            obj.buttonsBox.Heights = [-1 obj.BUTTON_HEIGHT -10];
         end
         
         function activate(obj)
@@ -61,22 +51,16 @@ classdef TypingPanel < edu.washington.riekelab.baudin.modules.SingleConeStimuli.
             
             if toRun
                 obj.controller.performTyping();
-                obj.imageBox.updateImage(obj.controller.getConeMapWithCones());
-                obj.setAcceptTypingButtonFunctionality('on');
+                % obj.imageBox.updateImage(obj.controller.getConeMapWithCones());
             end
         end
         
-        function onAcceptTyping(obj, ~, ~)
-            obj.controller.acceptTyping();
-        end
-        
-        function setAcceptTypingButtonFunctionality(obj, funct)
-            obj.acceptTypingButton.Enable = funct;
+        function onUpdatedTyping(obj, ~, ~)
+           obj.imageBox.updateImage(obj.controller.getConeMapWithCones()); 
         end
         
         function setButtonVisibility(obj, vis)
            obj.runTypingButton.Visible = vis;
-           obj.acceptTypingButton.Visible = vis;
         end
     end
 end
