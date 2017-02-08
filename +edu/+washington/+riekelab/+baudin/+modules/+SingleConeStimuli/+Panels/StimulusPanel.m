@@ -30,9 +30,9 @@ classdef StimulusPanel < edu.washington.riekelab.baudin.modules.SingleConeStimul
                 'Parent', obj.buttonsBox);
             
             uicontrol( ...
-                'Parent', obj.selectConesBox, ...
+                'Parent', obj.buttonsBox, ...
                 'Style', 'Text', ...
-                'String', 'For selected cones:');
+                'String', 'Cone selection:');
             
             uix.Empty( ...
                 'Parent', obj.buttonsBox);
@@ -40,7 +40,7 @@ classdef StimulusPanel < edu.washington.riekelab.baudin.modules.SingleConeStimul
             edu.washington.riekelab.baudin.modules.SingleConeStimuli.Utils.addFlankedByEmptyHorizontal( ...
                 @uicontrol, obj.buttonsBox, obj.FLANKED_BUTTON_WIDTHS, ...
                 'Style', 'pushbutton', ...
-                'String', 'Add Stimulus', ...
+                'String', 'Select all', ...
                 'Visible', 'off', ...
                 'Callback', @obj.onAddStimulus);
             
@@ -50,9 +50,17 @@ classdef StimulusPanel < edu.washington.riekelab.baudin.modules.SingleConeStimul
             edu.washington.riekelab.baudin.modules.SingleConeStimuli.Utils.addFlankedByEmptyHorizontal( ...
                 @uicontrol, obj.buttonsBox, obj.FLANKED_BUTTON_WIDTHS, ...
                 'Style', 'pushbutton', ...
-                'String', 'Clear Stimulus', ...
+                'String', 'Unselect all', ...
                 'Visible', 'off', ...
                 'Callback', @obj.onClearStimulusOnSelected);
+            
+            uix.Empty( ...
+                'Parent', obj.buttonsBox);
+            
+            uicontrol( ...
+                'Parent', obj.buttonsBox, ...
+                'Style', 'Text', ...
+                'String', 'Stimulus delivery:');
             
             uix.Empty( ...
                 'Parent', obj.buttonsBox);
@@ -60,12 +68,15 @@ classdef StimulusPanel < edu.washington.riekelab.baudin.modules.SingleConeStimul
             edu.washington.riekelab.baudin.modules.SingleConeStimuli.Utils.addFlankedByEmptyHorizontal( ...
                 @uicontrol, obj.buttonsBox, obj.FLANKED_BUTTON_WIDTHS, ...
                 'Style', 'pushbutton', ...
-                'String', 'View Stimulus', ...
+                'String', 'Deliver to selected', ...
                 'Visible', 'off', ...
                 'Callback', @obj.onViewStimulusOnSelected);
             
             uix.Empty( ...
                 'Parent', obj.buttonsBox);
+            
+            obj.buttonsBox.Heights = [-1 obj.TITLE_HEIGHT 7 obj.BUTTON_HEIGHT 7 obj.BUTTON_HEIGHT ...
+                -1 obj.TITLE_HEIGHT 7 obj.BUTTON_HEIGHT -1];
             
         end
         
@@ -79,42 +90,26 @@ classdef StimulusPanel < edu.washington.riekelab.baudin.modules.SingleConeStimul
         end
         
         function onUpdatedTyping(obj, ~, ~)
-            % clear current selections/stimuli and redraw cone circles
             obj.selectableConeCircles.delete();
             obj.drawConeCircles();
         end
         
         function onClickedImage(obj, ~, ~)
             pos = obj.imageAxes.CurrentPoint(1, 1:2);
-            obj.selectableConeCircles.handleClicke(pos);
+            obj.selectableConeCircles.handleClick(pos);
         end
         
-        function onClearSelection(obj, ~, ~)
-            obj.selectableConeCircles.clearSelection();
+        function onSelectAll(obj, ~, ~)
+            obj.selectableConeCircles.selectAll();
         end
         
-        function onAddStimulus(obj, ~, ~)
-            [protocolName, propertyMap] = obj.controller.getCurrentProtocol();
-            obj.selectableConeCircles.addStimulusToSelected(protocolName, propertyMap);
+        function onUnselectAll(obj, ~, ~)
+            obj.selectableConeCircles.unselectAll();
         end
         
         function onDeliverStimulus(obj, ~, ~)
-            obj.controller.deliverStimulus(obj.selectableConeCircles.collectStimuli());
-        end
-        
-        function onViewStimulusOnSelected(obj, ~, ~)
-            stimulus = obj.selectableConeCircles.getStimulusIfSingleConeSelected();
-            if ~isempty(propertyName)
-                obj.controller.viewStimulus(stimulus);
-            end
-        end
-        
-        function onClearStimulusOnSelected(obj, ~, ~)
-            obj.selectableConeCircles.clearStimulusOnSelected();
-        end
-        
-        function onClearAllStimuli(obj, ~, ~)
-            obj.selectableConeCircles.clearAllStimuli();
+            [centers, radii, types] = obj.selectableConeCircles.collectSelectedConeLocationsAndTypes();
+            obj.controller.deliverStimulus(centers, radii, types);
         end
     end
 end

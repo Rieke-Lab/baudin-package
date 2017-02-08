@@ -23,54 +23,40 @@ classdef SelectableConeCircles < handle
             end
         end
         
-        function clearSelection(obj)
-           obj.runFunctionOnConeCircles(@(x) x.unselect()); 
+        function selectAll(obj)
+            obj.runFunctionOnConeCircles(@(x) x.select());
+        end
+        
+        function unselectAll(obj)
+            obj.runFunctionOnConeCircles(@(x) x.unselect());
         end
         
         function handleClick(obj, location)
             obj.runFunctionOnConeCircles(@(x) x.handleClick(location));
         end
         
-        function addStimulusToSelected(obj, protocolName, propertyMap)
-            obj.runFunctionOnConeCircles(@(x) x.addStimulusIfSelected(protocolName, propertyMap));
+        
+        
+        function [centers, radii, types] = collectSelectedConeLocationsAndTypes(obj)
+            cones = obj.getSelectedCones();
+            numSelectedCones = numel(cones);
+            centers = zeros(1, numSelectedCones);
+            radii = zeros(numSelectedCones, 2);
+            types = cell(1, numSelectedCones);
+            
+            for i = 1:numSelectedCones
+                [centers(i, :), radii(i), types{i}] = cones{i}.getLocationAndType();
+            end
         end
         
-        function clearStimulusOnSelected(obj)
-           obj.runFunctionOnConeCircles(@(x) x.clearStimulusIfSelected()); 
-        end
-        
-        function clearAllStimuli(obj)
-           obj.runFunctionOnConeCircles(@(x) x.clearStimulus()); 
-        end
-        
-        function stimulus = getStimulusIfSingleConeSelected(obj)
-            selected = false(1, obj.numCones);
+        function cones = getSelectedCones(obj)
+            isSelected = false(1, obj.numCones);
+            
             for i = 1:obj.numCones
-                selected(i) = obj.coneCircles.isSelected();
+                isSelected(i) = obj.coneCircles{i}.isSelected();
             end
             
-            numSelected = sum(selected);
-            
-            if numSelected == 0 || numSelected > 1
-                stimulus = [];
-                errorString = ['Exactly one cone must be selected (currently ' ...
-                    num2str(numSelected) ' are selected).'];
-                errdlg(errorString, 'Selection Problem', 'modal');
-            else
-                stimulus = obj.coneCircles{selected}.getStimulus();
-            end
-        end
-        
-        function stimuli = collectStimuli(obj)
-            toUse = false(1, obj.numCones);
-            stimuli = cell(1, obj.numCones);
-            for i = 1:obj.numCones
-                if obj.coneCircles{i}.hasStimulus()
-                    toUse(i) = true;
-                    stimuli{i} = obj.coneCircles{i}.getStimulus();
-                end
-            end
-            stimuli = stimuli(toUse);
+            cones = obj.coneCircles(isSelected);
         end
         
         function delete(obj)

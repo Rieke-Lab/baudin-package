@@ -147,20 +147,12 @@ classdef Controller < handle
            end          
         end
         
-        function [protocolName, propertyMap] = getCurrentProtocol(obj)
-            
-        end
-        
-        function viewStimulus(obj, protocolName, propertyMap)
-            
-        end
-        
-        function deliverStimulus(obj)
-            
-        end
-        
-        function saveStimulus(obj)
-            
+        function deliverStimulus(obj, centers, radii, types)
+            acqSer = obj.module.acquisitionService;
+            acqSer.setProtocolProperty('centers', center);
+            acqSer.setProtocolProperty('radii', radii);
+            acqSer.setProtocolProperty('types', types);
+            acqSer.record();
         end
     end
     
