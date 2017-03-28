@@ -20,6 +20,10 @@ classdef Controller < handle
        numCones 
     end
     
+    events
+        updatedTyping
+    end
+    
     methods
         % CONSTRUCTION AND RESETTING
         function obj = Controller(module)
@@ -101,7 +105,7 @@ classdef Controller < handle
             analysisResults = load(resultFileName);
             delete(resultsFileName);
             
-            
+            notify(obj, 'updatedTyping');
         end
         
         function [centers, radii] = constructConeLocationMatrices(obj)
@@ -125,10 +129,6 @@ classdef Controller < handle
             
         end
         
-        function acceptTyping(obj)
-           disp('Accepting cone typing...'); 
-        end
-        
         function tf =  conesAreTyped(obj)
             tf = false;
             for i = 1:numel(obj.fitCones)
@@ -140,7 +140,20 @@ classdef Controller < handle
         end
         
         % STIMULUS GENERATION TAB
+        function types = getConeTypes(obj)
+           types = cell(1, obj.numCones);
+           for i = 1:obj.numCones
+              types{i} = obj.fitCones{i}.type; 
+           end          
+        end
         
+        function deliverStimulus(obj, centers, radii, types)
+            acqSer = obj.module.acquisitionService;
+            acqSer.setProtocolProperty('centers', center);
+            acqSer.setProtocolProperty('radii', radii);
+            acqSer.setProtocolProperty('types', types);
+            acqSer.record();
+        end
     end
     
     methods
