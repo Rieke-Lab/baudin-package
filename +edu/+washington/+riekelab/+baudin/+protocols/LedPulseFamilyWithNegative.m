@@ -1,5 +1,5 @@
 classdef LedPulseFamilyWithNegative < edu.washington.riekelab.protocols.RiekeLabProtocol
-    % Presents families of rectangular pulse stimuli to a specified LED and records responses from a specified 
+    % Presents families of rectangular pulse stimuli to a specified LED and records responses from a specified
     % amplifier. Each family consists of a set of pulse stimuli with amplitude starting at firstLightAmplitude. With
     % each subsequent pulse in the family, the amplitude is doubled. The family is complete when this sequence has been
     % executed pulsesInFamily times.
@@ -23,8 +23,8 @@ classdef LedPulseFamilyWithNegative < edu.washington.riekelab.protocols.RiekeLab
     properties (Dependent, SetAccess = private)
         amp2                            % Secondary amplifier
     end
-
-    properties 
+    
+    properties
         numberOfAverages = uint16(5)    % Number of families
         interpulseInterval = 0          % Duration between pulses (s)
     end
@@ -167,8 +167,13 @@ classdef LedPulseFamilyWithNegative < edu.washington.riekelab.protocols.RiekeLab
         
         function value = get.amplitudes(obj)
             absoluteAmplitudes = obj.firstLightAmplitude * obj.scaleFactor .^ double((0:obj.pulsesInFamily - 1));
-            allAmplitudes = [-fliplr(absoluteAmplitudes) absoluteAmplitudes];
-            value = allAmplitudes(allAmplitudes >= -obj.lightMean);
+            
+            if obj.includePossibleNegatives
+                allAmplitudes = [-fliplr(absoluteAmplitudes) absoluteAmplitudes];
+                value = allAmplitudes(allAmplitudes >= -obj.lightMean);
+            else
+                value = absoluteAmplitudes;
+            end
         end
         
         function value = get.numAmplitudes(obj)
