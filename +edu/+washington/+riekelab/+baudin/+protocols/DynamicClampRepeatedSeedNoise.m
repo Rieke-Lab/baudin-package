@@ -1,8 +1,8 @@
 classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.RiekeLabProtocol
-    properties
+       properties
         gExcMultiplier = 1
         gInhMultiplier = 1
-        excitatoryConductancePath = 'enter path'
+        excitatoryConductancePath = 'C:\Users\Jacob Baudin\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\repeatedSeedNoiseConductances.mat'
         ExcReversal = 10;
         InhReversal = -70;
         
@@ -16,11 +16,12 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
     end
     
     properties (Hidden)
+        ampType
         conductanceData
         numEpochs
     end
     
-    methods
+    methodss
         
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
@@ -32,11 +33,9 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             
             % load the conductances
             obj.conductanceData = load(obj.excitatoryConductancePath);
-            obj.numEpochs = size(obj.conductanceData.conductances, 1);
+            obj.numEpochs = size(obj.conductanceData.conductances, 1) * (1 + numel(obj.epochsToRepeat));
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-            obj.showFigure('edu.washington.riekelab.turner.figures.MeanResponseFigure',...
-                obj.rig.getDevice(obj.amp),'groupBy',{'currentImageIndex'});
             obj.showFigure('edu.washington.riekelab.turner.figures.DynamicClampFigure',...
                 obj.rig.getDevice(obj.amp), obj.rig.getDevice('Excitatory conductance'),...
                 obj.rig.getDevice('Inhibitory conductance'), obj.rig.getDevice('Injected current'),...
@@ -45,7 +44,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             %set the backgrounds on the conductance commands
             %0.05 V command per 1 nS conductance
             c = obj.conductanceData;
-            allPrePts = c.conductances(1:(c.preTime * c.sampleRate / 1e3), :);
+            allPrePts = c.conductances(:, 1:(c.preTime * c.sampleRate / 1e3));
             excBackground = obj.nSToVolts(mean(allPrePts(:)));
             obj.rig.getDevice('Excitatory conductance').background = symphonyui.core.Measurement(excBackground, 'V');
         end
@@ -88,11 +87,11 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             epoch.addResponse(obj.rig.getDevice('Injected current'));
             
-            epoch.addParameter('excitatoryConductance', excConductance);
+%             epoch.addParameter('excitatoryConductance', excConductance);
             epoch.addParameter('excitatoryConductanceIdx', excConductanceIdx);
         end
         
-        function conductance = determineConductance(obj, epochNum)
+        function [conductance, idx] = determineConductance(obj, epochNum)
             numCycles = numel(obj.epochsToRepeat) + 1;
             if mod(epochNum, numCycles) == 1
                 idx = floor(epochNum / (numCycles)) + 1;

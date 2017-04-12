@@ -135,11 +135,11 @@ classdef LedPulseFamilyWithNegative < edu.washington.riekelab.protocols.RiekeLab
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
-            tf = obj.numEpochsPrepared < obj.numberOfAverages * obj.pulsesInFamily;
+            tf = obj.numEpochsPrepared < obj.numberOfAverages * obj.numAmplitudes;
         end
         
         function tf = shouldContinueRun(obj)
-            tf = obj.numEpochsCompleted < obj.numberOfAverages * obj.pulsesInFamily;
+            tf = obj.numEpochsCompleted < obj.numberOfAverages * obj.numAmplitudes;
         end
         
         function [tf, msg] = isValid(obj)
