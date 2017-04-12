@@ -21,7 +21,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
         numEpochs
     end
     
-    methodss
+    methods
         
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
