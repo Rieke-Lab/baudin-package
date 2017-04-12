@@ -3,7 +3,7 @@ classdef DynamicClampBaselineSpikeRate < edu.washington.riekelab.protocols.Rieke
         ExcReversal = 10;
         InhReversal = -70;
         
-        epochTime
+        epochTime = 2000;
         
         nSPerV = 20;
         
@@ -13,7 +13,9 @@ classdef DynamicClampBaselineSpikeRate < edu.washington.riekelab.protocols.Rieke
     end
     
     properties (Hidden)
+        ampType
         spikeRateFigure
+        spikeRateAxes = [];
         spikeRateLine = [];
     end
     
@@ -39,14 +41,17 @@ classdef DynamicClampBaselineSpikeRate < edu.washington.riekelab.protocols.Rieke
                 obj.ExcReversal, obj.InhReversal);
         end
         
-        function intializeSpikeRateFigure(obj)
+        function initializeSpikeRateFigure(obj)
             obj.spikeRateLine = [];
-            obj.spikeRateFigure.Color = 'w';
-            axHand = obj.spikeRateFigure.userData.axesHandle;
-            cla(axHand);
-            axHand.XLabel.String = 'epoch number';
-            axHand.YLabel.String = 'spike rate (Hz)';
-            axHand.Title.String = 'baseline spike rate monitor';
+            obj.spikeRateFigure.getFigureHandle().Color = 'w';
+            if ~isempty(obj.spikeRateAxes) && isvalid(obj.spikeRateAxes)
+                cla(obj.spikeRateAxes);
+            else
+                obj.spikeRateAxes = axes('Parent', obj.spikeRateFigure.getFigureHandle());
+            end
+            obj.spikeRateAxes.XLabel.String = 'epoch number';
+            obj.spikeRateAxes.YLabel.String = 'spike rate (Hz)';
+            obj.spikeRateAxes.Title.String = 'baseline spike rate monitor';
         end
         
         function updateFigure(obj, ~, epoch)
@@ -60,44 +65,46 @@ classdef DynamicClampBaselineSpikeRate < edu.washington.riekelab.protocols.Rieke
             spikeRate = spikeCount / duration;
             
             if isempty(obj.spikeRateLine)
-               obj.spikeRateLine = plot(obj.spikeRateFigure.userData.axesHandle, ...
-                   1, spikeRate, ...
-                   'LineWidth', 2, ...
-                   'Color', [0.2 0.2 1]);
-               text(obj.spikeRateFigure.userData.axesHandle, ...
-                   1, spikeRate * 1.1, ...
-                   num2str(spikeRate));
+                obj.spikeRateLine = plot(obj.spikeRateAxes, ...
+                    1, spikeRate, ...
+                    'LineWidth', 2, ...
+                    'Color', [0.2 0.2 1]);
+                text(obj.spikeRateAxes, ...
+                    1, spikeRate * 1.1, ...
+                    num2str(spikeRate));
             else
                 epochNum = numel(obj.spikeRateLine.XData) + 1;
                 set(obj.spikeRateLine, ...
                     {'XData', 'YData'}, ...
                     {(1:epochNum), [obj.spikeRateLine.YData spikeRate]});
-                text(obj.spikeRateFigure.userData.axesHandle, ...
-                   epochNum, spikeRate * 1.1, ...
-                   num2str(spikeRate));
+                text(obj.spikeRateAxes, ...
+                    epochNum, spikeRate * 1.3, ...
+                    num2str(spikeRate));
             end
+            obj.spikeRateAxes.XLabel.String = 'epoch number';
+            obj.spikeRateAxes.YLabel.String = 'spike rate (Hz)';
+            obj.spikeRateAxes.Title.String = 'baseline spike rate monitor';
         end
         
         function stim = createZeroConductanceStimulus(obj)
             gen = symphonyui.builtin.stimuli.WaveformGenerator();
             gen.sampleRate = obj.sampleRate;
             gen.units = 'V';
-            gen.waveshape = zeros(1, obj.timeToPts(obj.epochTime)); 
-            gen.waveshape = mappedConductanceTrace;
+            gen.waveshape = zeros(1, obj.timeToPts(obj.epochTime));
             stim = gen.generate();
         end
         
         function pts = timeToPts(obj, time)
-           pts = time * obj.sampleRate / 1e3; 
+            pts = time * obj.sampleRate / 1e3;
         end
         
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             epoch.addStimulus(obj.rig.getDevice('Excitatory conductance'), ...
-                obj.createZeroConductanceStimulus(obj.epochTime));
+                obj.createZeroConductanceStimulus());
             epoch.addStimulus(obj.rig.getDevice('Inhibitory conductance'), ...
-                obj.createZeroConductanceStimulus(obj.epochTime));
+                obj.createZeroConductanceStimulus());
             
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             epoch.addResponse(obj.rig.getDevice('Injected current'));

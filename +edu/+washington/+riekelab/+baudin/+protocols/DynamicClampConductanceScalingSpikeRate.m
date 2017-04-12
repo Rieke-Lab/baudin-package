@@ -3,7 +3,7 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
         gExcMultiplier = 1
         gInhMultiplier = 1
         
-        excitatoryConductancePath = 'enter path'
+        excitatoryConductancePath = 'C:\Users\Jacob Baudin\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\repeatedSeedNoiseConductances.mat'
         
         ExcReversal = 10;
         InhReversal = -70;
@@ -19,8 +19,9 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
     
     properties (Hidden)
         conductanceData
-        
+        ampType
         spikeRateFigure
+        spikeRateAxes = [];
         spikeRateLine = [];
     end
     
@@ -43,7 +44,7 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
             
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.turner.figures.MeanResponseFigure',...
-                obj.rig.getDevice(obj.amp),'groupBy',{'currentImageIndex'});
+                obj.rig.getDevice(obj.amp));
             obj.showFigure('edu.washington.riekelab.turner.figures.DynamicClampFigure',...
                 obj.rig.getDevice(obj.amp), obj.rig.getDevice('Excitatory conductance'),...
                 obj.rig.getDevice('Inhibitory conductance'), obj.rig.getDevice('Injected current'),...
@@ -52,19 +53,23 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
             %set the backgrounds on the conductance commands
             %0.05 V command per 1 nS conductance
             c = obj.conductanceData;
-            allPrePts = c.conductances(1:(c.preTime * c.sampleRate / 1e3), :);
-            excBackground = obj.nSToVolts(mean(allPrePts(:)) * obj.gExcMultiplier);
+%             allPrePts = c.conductances(1:(c.preTime * c.sampleRate / 1e3), :);
+            excBackground = obj.nSToVolts(mean(c.conductances(obj.epochToUse, :)) * obj.gExcMultiplier);
+%             excBackground = obj.nSToVolts(mean(allPrePts(:)) * obj.gExcMultiplier);
             obj.rig.getDevice('Excitatory conductance').background = symphonyui.core.Measurement(excBackground, 'V');
         end
         
-        function intializeSpikeRateFigure(obj)
+        function initializeSpikeRateFigure(obj)
             obj.spikeRateLine = [];
-            obj.spikeRateFigure.Color = 'w';
-            axHand = obj.spikeRateFigure.userData.axesHandle;
-            cla(axHand);
-            axHand.XLabel.String = 'epoch number';
-            axHand.YLabel.String = 'spike rate (Hz)';
-            axHand.Title.String = 'baseline spike rate monitor';
+            obj.spikeRateFigure.getFigureHandle().Color = 'w';
+            if ~isempty(obj.spikeRateAxes) && isvalid(obj.spikeRateAxes)
+                cla(obj.spikeRateAxes);
+            else
+                obj.spikeRateAxes = axes('Parent', obj.spikeRateFigure.getFigureHandle());
+            end
+            obj.spikeRateAxes.XLabel.String = 'epoch number';
+            obj.spikeRateAxes.YLabel.String = 'spike rate (Hz)';
+            obj.spikeRateAxes.Title.String = 'spike rate monitor';
         end
         
         function updateFigure(obj, ~, epoch)
@@ -74,18 +79,15 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
             duration = numel(epochTrace) / sampleRate;
             
             spikes = edu.washington.riekelab.baudin.utils.spikeDetectorOnline(epochTrace);
-            prePts = obj.conductanceData.preTime * obj.conductanceData.sampleRate / 1e3;
-            stimPts = obj.conductanceData.stimTime * obj.conductanceData.sampleRate / 1e3;
-            
-            spikeCount = sum((spikes.sp >= prePts + 1) & (spikes.sp <= prePts + stimPts));
+            spikeCount = length(spikes.sp);
             spikeRate = spikeCount / duration;
             
             if isempty(obj.spikeRateLine)
-                obj.spikeRateLine = plot(obj.spikeRateFigure.userData.axesHandle, ...
+                obj.spikeRateLine = plot(obj.spikeRateAxes, ...
                     1, spikeRate, ...
                     'LineWidth', 2, ...
                     'Color', [0.2 0.2 1]);
-                text(obj.spikeRateFigure.userData.axesHandle, ...
+                text(obj.spikeRateAxes, ...
                     1, spikeRate * 1.1, ...
                     num2str(spikeRate));
             else
@@ -93,10 +95,13 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
                 set(obj.spikeRateLine, ...
                     {'XData', 'YData'}, ...
                     {(1:epochNum), [obj.spikeRateLine.YData spikeRate]});
-                text(obj.spikeRateFigure.userData.axesHandle, ...
-                    epochNum, spikeRate * 1.1, ...
+                text(obj.spikeRateAxes, ...
+                    epochNum, spikeRate * 1.3, ...
                     num2str(spikeRate));
             end
+            obj.spikeRateAxes.XLabel.String = 'epoch number';
+            obj.spikeRateAxes.YLabel.String = 'spike rate (Hz)';
+            obj.spikeRateAxes.Title.String = 'spike rate monitor';
         end
         
         function stim = createConductanceStimulus(obj, conductanceType, conductance)
