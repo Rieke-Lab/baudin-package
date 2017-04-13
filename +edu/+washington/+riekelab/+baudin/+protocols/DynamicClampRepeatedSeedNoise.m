@@ -11,7 +11,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
         epochsToRepeat = [1, 2];
         
         amp
-        numberOfAverages = uint16(5)
+%         numberOfAverages = uint16(5)
         interpulseInterval = 0.2
     end
     
@@ -40,6 +40,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
                 obj.rig.getDevice(obj.amp), obj.rig.getDevice('Excitatory conductance'),...
                 obj.rig.getDevice('Inhibitory conductance'), obj.rig.getDevice('Injected current'),...
                 obj.ExcReversal, obj.InhReversal);
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.numEpochs)
             
             %set the backgrounds on the conductance commands
             %0.05 V command per 1 nS conductance
