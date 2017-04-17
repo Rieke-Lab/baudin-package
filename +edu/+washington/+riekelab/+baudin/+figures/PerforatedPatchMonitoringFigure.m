@@ -17,6 +17,12 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
         membranePotentialScatter
         ledPulseResponsesLines
         flashResponseSizeScatter
+        
+        colorCycler
+    end
+    
+    properties (Constant)
+       SCATTER_MARKER_SIZE = 100; 
     end
     
     methods
@@ -25,6 +31,15 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
             obj.responseDevice = responseDevice;
             obj.stimulusDevice = stimulusDevice;
             obj.ledPulsesToOverlay = ledPulsesToOverlay;
+            obj.createUi();
+            obj.colorCycler = edu.washington.riekelab.baudin.utils.ColorCycler(ledPulsesToOverlay);
+        end
+        
+        function reset(obj)
+            obj.membranePotentialPlotAxes.delete()
+            obj.ledPulseResponsesPlotAxes.delete()
+            obj.flashResponseSizePlotAxes.delete()
+            
             obj.createUi();
         end
         
@@ -35,11 +50,11 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
                 'FontName', get(obj.figureHandle, 'DefaultUicontrolFontName'),...
                 'FontSize', get(obj.figureHandle, 'DefaultUicontrolFontSize'), ...
                 'XTickMode', 'auto');
-            obj.membranePoentialAxes.XLabel.String = 'epoch number';
+            obj.membranePotentialPlotAxes.XLabel.String = 'epoch number';
             obj.membranePotentialPlotAxes.YLabel.String = 'average voltage (mV)';
             obj.membranePotentialScatter = scatter([], [], ...
                 'Parent', obj.membranePotentialPlotAxes, ...
-                'SizeData', 20, ...
+                'SizeData', obj.SCATTER_MARKER_SIZE, ...
                 'Marker', '.', ...
                 'MarkerEdgeColor', [0.2 0.2 1], ...
                 'MarkerFaceColor', [0.2 0.2 1]);
@@ -52,7 +67,7 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
                 'XTickMode', 'auto');
             obj.ledPulseResponsesPlotAxes.XLabel.String = 'time (ms)';
             obj.ledPulseResponsesPlotAxes.YLabel.String = 'flash response (mV)';
-            obj.ledPulseResponsesLines = gobjects(obj.ledPulsesToOverlay, 0);
+            obj.ledPulseResponsesLines = [];
             
             % scatter of flash response sizes
             obj.flashResponseSizePlotAxes = subplot(1,3,3,...
@@ -64,7 +79,7 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
             obj.flashResponseSizePlotAxes.YLabel.String = 'flash response amplitude (mV)';
             obj.flashResponseSizeScatter = scatter([], [], ...
                 'Parent', obj.flashResponseSizePlotAxes, ...
-                'SizeData', 20, ...
+                'SizeData', obj.SCATTER_MARKER_SIZE, ...
                 'Marker', '.', ...
                 'MarkerEdgeColor', [0.2 0.2 1], ...
                 'MarkerFaceColor', [0.2 0.2 1]);
@@ -81,10 +96,10 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
                 sampleRate = stimulus.sampleRate.quantityInBaseUnits;
                 prePts = preTime * sampleRate / 1e3;
                 
-                zeroedResponse = epochTrace - mean(response(1:prePts));
+                zeroedResponse = response - mean(response(1:prePts));
                 timeVector = ((0:numel(response) - 1) - prePts) * 1e3 / sampleRate;
 
-                obj.updateLedPulseResponseAxes(zeroedResponse, timeVector);
+                obj.updateLedPulseResponsesAxes(zeroedResponse, timeVector);
                 obj.updateFlashResponseSizeAxes(zeroedResponse);
             else
                 obj.updateMembranePotentialAxes(response);
@@ -95,26 +110,44 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
             obj.addPointToScatter(obj.membranePotentialScatter, mean(response));
         end
         
-        function updateLedPulseResponsesAxes(obj, zeroedResponse, timeVector)
-            obj.ledPulseResponsesLines = [line(timeVector, zeroedResponse) ...
-                obj.ledPulseResponsesLines(1:end - 1)];
-            legend(obj.ledPulseResponseLines(1:numel(obj.ledPulseResponseLines)), ...
+        function updateLedPulseResponsesAxes(obj, zeroedResponse, timeVector)                       
+            obj.updateLineHandles(line(timeVector, zeroedResponse, ...
+                'Parent', obj.ledPulseResponsesPlotAxes, ...
+                'Color', obj.colorCycler.Next()));
+            
+            legend(obj.ledPulseResponsesPlotAxes, ...
+                obj.ledPulseResponsesLines, ...
                 arrayfun(@(x) num2str(x), (0:-1:-numel(obj.ledPulseResponsesLines) + 1), 'UniformOutput', false), ...
-                'Box', 'off')
+                'Box', 'off');
+        end
+        
+        function updateLineHandles(obj, newLine)
+            currNumLines = numel(obj.ledPulseResponsesLines);
+            disp(currNumLines)
+            if currNumLines < obj.ledPulsesToOverlay
+                obj.ledPulseResponsesLines = [newLine obj.ledPulseResponsesLines];
+            else
+                obj.ledPulseResponsesLines(end).delete();
+                obj.ledPulseResponsesLines = [newLine obj.ledPulseResponsesLines(1:end - 1)];
+            end
+            
+%             for i = 1:currNumLines + 1
+%                obj.ledPulseResponsesLines(i).DisplayName = ''; 
+%             end
         end
         
         function updateFlashResponseSizeAxes(obj, zeroedResponse)
             obj.addPointToScatter(obj.flashResponseSizeScatter, min(zeroedResponse));
         end
-        
+    end
+    
+    methods (Static)
         function addPointToScatter(scatterToUdate, newData)
-            currYData = obj.scatterToUdate.YData;
+            currYData = scatterToUdate.YData;
             set(scatterToUdate, ...
                 'XData', (1:numel(currYData) + 1), ...
                 'YData', [currYData newData]);
         end
-        
     end
-    
 end
 

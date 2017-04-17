@@ -105,7 +105,7 @@ classdef PerforatedPatchAccessMonitor < edu.washington.riekelab.protocols.RiekeL
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            device = obj.rig.getDevice(obj.led);G
+            device = obj.rig.getDevice(obj.led);
             interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
         end
         
