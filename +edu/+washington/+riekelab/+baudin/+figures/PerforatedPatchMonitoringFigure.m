@@ -130,10 +130,6 @@ classdef PerforatedPatchMonitoringFigure < symphonyui.core.FigureHandler
                 obj.ledPulseResponsesLines(end).delete();
                 obj.ledPulseResponsesLines = [newLine obj.ledPulseResponsesLines(1:end - 1)];
             end
-            
-%             for i = 1:currNumLines + 1
-%                obj.ledPulseResponsesLines(i).DisplayName = ''; 
-%             end
         end
         
         function updateFlashResponseSizeAxes(obj, zeroedResponse)

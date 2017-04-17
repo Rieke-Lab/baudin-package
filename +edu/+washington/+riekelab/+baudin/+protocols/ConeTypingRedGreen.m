@@ -14,23 +14,19 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties (Hidden)
         ledType
         ampType
-        plotData
     end
     
     % plot stuff
-    properties
+    properties (Hidden = true)
         customFigure
         customFigureAxes = [];
         customFigureLines
     end
     
-    properties (Constant)
+    properties (Constant = true, Hidden = true)
         IDENTIFIER_NAME = 'ledIdentifier';
         RED_IDENTIFIER = 'red';
         GREEN_IDENTIFIER = 'green';
-        COLOR_LOOKUP = containers.Map({edu.washington.riekelab.baudin.protocolsContTypingRedGreen.RED_IDENTIFIER, ...
-            edu.washington.riekelab.baudin.protocolsContTypingRedGreen.GREEN_IDENTIFIER}, ...
-            {[0.8 0.2 0.2], [0.2 0.8 0.2]});
     end
     
     methods
@@ -43,6 +39,7 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             obj.customFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateFigure);
+            obj.initializeCustomFigure();
             obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
             obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                 'baselineRegion', [0 obj.preTime], ...
@@ -55,7 +52,7 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function initializeCustomFigure(obj)
-            if ~isempty(obj.customFigureAxes)
+            if ~isempty(obj.customFigureAxes) && isvalid(obj.customFigureAxes)
                 cla(obj.customFigureAxes);
             else
                 obj.customFigureAxes = axes('Parent', obj.customFigure.getFigureHandle());
@@ -74,14 +71,15 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
             ledId = epoch.parameters(obj.IDENTIFIER_NAME);
             if obj.customFigureLines.isKey(ledId)
                 currLine = obj.customFigureLines(ledId);
-                numPrevious = currLine.userData;
+                numPrevious = currLine.UserData;
                 numTotal = numPrevious + 1;
                 currLine.YData = (response / numTotal) + (numPrevious * currLine.YData / numTotal);
             else
                 time = (1:numel(response)) * 1e3 / obj.sampleRate - obj.preTime;
                 obj.customFigureLines(ledId) = line(time, response, ...
                     'Parent', obj.customFigureAxes, ...
-                    'Color', obj.COLOR_LOOKUP(ledId));
+                    'Color', edu.washington.riekelab.baudin.utils.ConeTypingColors.LOOKUP(ledId), ...
+                    'UserData', 1);
             end
         end
         
@@ -103,7 +101,7 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
             % get epoch number
-            if isodd(obj.numEpochsPrepared)
+            if mod(obj.numEpochsPrepared, 2) == 1
                 ledDevice = obj.rig.getDevice('Red LED');
                 ledIdentifier = obj.RED_IDENTIFIER;
                 ledAmplitude = obj.redLedAmplitude;
@@ -115,7 +113,7 @@ classdef ConeTypingRedGreen < edu.washington.riekelab.protocols.RiekeLabProtocol
             
             epoch.addStimulus(ledDevice, obj.createLedStimulus(ledDevice, ledAmplitude));
             epoch.addResponse(obj.rig.getDevice(obj.amp));
-            epoch.addResponse(obj.IDENTIFIER_NAME, ledIdentifier);
+            epoch.addParameter(obj.IDENTIFIER_NAME, ledIdentifier);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
