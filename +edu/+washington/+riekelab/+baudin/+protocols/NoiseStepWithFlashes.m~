@@ -74,34 +74,38 @@ classdef NoiseStepWithFlashes < edu.washington.riekelab.protocols.RiekeLabProtoc
         end
         
         function stim = createLedStimulus(obj)
-            flashChunkTime = obj.flashStimTime + obj.flashTailTime;
+            stepTime = obj.noiseStepTime + obj.numberOfFlashes * (obj.flashStimTime + obj.flashTailTime);
+            totalTime = obj.preTime + stepTime + obj.tailTime;
             
             stepGenerator = symphonyui.builtin.stimuli.PulseGenerator();
             stepGenerator.preTime = obj.preTime;
-            stepGenerator.stimTime = obj.noiseStepTime + obj.numberOfFlashes * flashChunkTime;
+            stepGenerator.stimTime = stepTime;
             stepGenerator.tailTime = obj.tailTime;
-            stepGenerator.amplitude = obj.noiseStepAmplitude;
-            stepGenerator.mean = obj.lightMean;
+            stepGenerator.amplitude = obj.stepMagnitude - obj.baselineMagnitude;
+            stepGenerator.mean = obj.baselineMagnitude;
             stepGenerator.sampleRate = obj.sampleRate;
             stepGenerator.units = obj.rig.getDevice(obj.led).background.displayUnits;
+            
             stepStimulus = stepGenerator.generate();
             
             flashStimuli = cell(1, obj.numberOfFlashes);
+            flashChunkTime = obj.flashStimTime + obj.flashTailTime;
             for i = 1:obj.numberOfFlashes
                 gen = symphonyui.builtin.stimuli.PulseGenerator();
-                gen.preTime = obj.preTime + obj.noiseStepTime + (i - 1) * flashChunkTime;
+                
+                gen.preTime = obj.preTime + obj.noiseStepTime + (i - 1) * flashChunkTime
                 gen.stimTime = obj.flashStimTime;
-                gen.tailTime = obj.flashTailTime + (obj.numberOfFlashes - i) * flashChunkTime + obj.tailTime;
+                gen.tailTime = 
                 gen.amplitude = obj.flashAmplitude;
                 gen.mean = 0;
                 gen.sampleRate = obj.sampleRate;
                 gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
-                flashStimuli{i} = gen.generate();
+                flashGenerators{i} = gen.generate();
             end
             
             % sum them into one stimulus
             sumGen = symphonyui.builtin.stimuli.SumGenerator();
-            sumGen.stimuli = [{stepStimulus} flashStimuli];
+            sumGen.stimuli = [{stim} flashStimuli];
             stim = sumGen.generate();
         end
         
@@ -139,7 +143,9 @@ classdef NoiseStepWithFlashes < edu.washington.riekelab.protocols.RiekeLabProtoc
                 i = find(~ismember(amps, obj.amp), 1);
                 a = amps{i};
             end
-        end 
+        end
+        
     end
+    
 end
 
