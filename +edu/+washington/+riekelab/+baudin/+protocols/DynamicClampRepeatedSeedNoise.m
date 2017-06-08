@@ -6,7 +6,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
         ExcReversal = 10;
         InhReversal = -70;
         
-        nSPerV = 20;
+        nSPerVolt = 20;
         
         epochsToRepeat = [1, 2];
         
@@ -16,7 +16,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
     end
     
     properties (Constant)
-        CONDUCTANCE_FILENAME = containers.Map( ...
+        CONDUCTANCE_FILENAMES = containers.Map( ...
             {'foveal midget', 'peripheral midget', 'peripheral parasol'}, ...
             {'foveal_midget_conductances.mat', ...
             'peripheral_midget_conductances.mat', ...
@@ -32,8 +32,10 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
     end
     
     methods
-        function loadConductance(obj)
-            
+        function loadConductanceData(obj)
+            filename = obj.CONDUCTANCE_FILENAMES(obj.conductance);
+            resourcesFolder = what(fullfile('edu', 'washington', 'riekelab', 'baudin', 'resources'));
+            obj.conductanceData = fullfile(resourcesFolder.path, filename);
         end
         
         function didSetRig(obj)
@@ -59,7 +61,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             %0.05 V command per 1 nS conductance
             c = obj.conductanceData;
             allPrePts = c.conductances(:, 1:(c.preTime * c.sampleRate / 1e3));
-            excBackground = obj.nSToVolts(mean(allPrePts(:)));
+            excBackground = obj.nSToVolts(obj.gExcMultiplier * mean(allPrePts(:)));
             obj.rig.getDevice('Excitatory conductance').background = symphonyui.core.Measurement(excBackground, 'V');
         end
         
@@ -77,7 +79,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             
             %map conductance (nS) to DAC output (V) to match expectation of
             %Arduino...
-            % oftem, 200 nS = 10 V, 1 nS = 0.05 V
+            % often, 200 nS = 10 V, 1 nS = 0.05 V
             mappedConductanceTrace = obj.nSToVolts(newConductanceTrace);
             
             if any(mappedConductanceTrace > 10)
@@ -103,6 +105,10 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             
             %             epoch.addParameter('excitatoryConductance', excConductance);
             epoch.addParameter('excitatoryConductanceIdx', excConductanceIdx);
+            epoch.addParameter('preTime', obj.conductanceData.preTime);
+            epoch.addParameter('stimTime', obj.conductanceData.stimTime);
+            epoch.addParameter('tailTime', obj.conductanceData.tailTime);
+            epoch.addParameter('dataID', obj.conductanceData.dataID);
         end
         
         function [conductance, idx] = determineConductance(obj, epochNum)
@@ -116,7 +122,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
         end
         
         function volts = nSToVolts(obj, nS)
-            volts = nS / obj.nSPerV;
+            volts = nS / obj.nSPerVolt;
         end
         
         function prepareInterval(obj, interval)

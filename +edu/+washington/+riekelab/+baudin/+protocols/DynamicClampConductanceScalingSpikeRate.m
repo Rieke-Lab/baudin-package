@@ -3,12 +3,12 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
         gExcMultiplier = 1
         gInhMultiplier = 1
         
-        excitatoryConductancePath = 'C:\Users\Jacob Baudin\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\repeatedSeedNoiseConductances.mat'
+        conductances = 'foveal midget';
         
         ExcReversal = 10;
         InhReversal = -70;
         
-        nSPerV = 20;
+        nSPerVolt = 20;
         
         epochToUse = 1;
         
@@ -17,8 +17,18 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
         interpulseInterval = 0.2
     end
     
+    properties (Constant)
+        CONDUCTANCE_FILENAMES = containers.Map( ...
+            {'foveal midget', 'peripheral midget', 'peripheral parasol'}, ...
+            {'foveal_midget_conductances.mat', ...
+            'peripheral_midget_conductances.mat', ...
+            'peripheral_parasol_conductances.mat'})
+    end
+    
     properties (Hidden)
         conductanceData
+        conductancesType = symphonyui.core.PropertyType('char', 'row', ...
+            edu.washington.riekelab.baudin.protocols.DynamicClampRepeatedSeedNoise.CONDUCTANCE_PATH_LOOKUP.keys());
         ampType
         spikeRateFigure
         spikeRateAxes = [];
@@ -26,6 +36,11 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
     end
     
     methods
+        function loadConductanceData(obj)
+            filename = obj.CONDUCTANCE_FILENAMES(obj.conductance);
+            resourcesFolder = what(fullfile('edu', 'washington', 'riekelab', 'baudin', 'resources'));
+            obj.conductanceData = fullfile(resourcesFolder.path, filename);
+        end
         
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
@@ -36,7 +51,7 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
             
             % load the conductances
-            obj.conductanceData = load(obj.excitatoryConductancePath);
+            obj.loadConductanceData();
             
             obj.spikeRateFigure = obj.showFigure( ...
                 'symphonyui.builtin.figures.CustomFigure', @obj.updateFigure);
@@ -53,9 +68,8 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
             %set the backgrounds on the conductance commands
             %0.05 V command per 1 nS conductance
             c = obj.conductanceData;
-%             allPrePts = c.conductances(1:(c.preTime * c.sampleRate / 1e3), :);
-            excBackground = obj.nSToVolts(mean(c.conductances(obj.epochToUse, :)) * obj.gExcMultiplier);
-%             excBackground = obj.nSToVolts(mean(allPrePts(:)) * obj.gExcMultiplier);
+            excBackground = obj.nSToVolts( ...
+                obj.gExcMultiplier * mean(c.conductances(obj.epochToUse, 1:(c.preTime * c.sampleRate / 1e3))));
             obj.rig.getDevice('Excitatory conductance').background = symphonyui.core.Measurement(excBackground, 'V');
         end
         
@@ -150,7 +164,7 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
         end
         
         function volts = nSToVolts(obj, nS)
-           volts = nS / obj.nSPerV; 
+            volts = nS / obj.nSPerVolt;
         end
         
         function prepareInterval(obj, interval)
