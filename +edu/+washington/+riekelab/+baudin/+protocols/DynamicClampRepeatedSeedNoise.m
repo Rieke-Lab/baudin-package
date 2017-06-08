@@ -14,28 +14,20 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
         %         numberOfAverages = uint16(5)
         interpulseInterval = 0.2
     end
-    
-    properties (Constant)
-        CONDUCTANCE_FILENAMES = containers.Map( ...
-            {'foveal midget', 'peripheral midget', 'peripheral parasol'}, ...
-            {'foveal_midget_conductances.mat', ...
-            'peripheral_midget_conductances.mat', ...
-            'peripheral_parasol_conductances.mat'})
-    end
-    
+
     properties (Hidden)
         ampType
         conductancesType = symphonyui.core.PropertyType('char', 'row', ...
-            edu.washington.riekelab.baudin.protocols.DynamicClampRepeatedSeedNoise.CONDUCTANCE_PATH_LOOKUP.keys());
+            edu.washington.riekelab.baudin.resources.ConductanceFilenameLookup.CONDUCTANCE_FILENAMES.keys());
         conductanceData
         numEpochs
     end
     
     methods
         function loadConductanceData(obj)
-            filename = obj.CONDUCTANCE_FILENAMES(obj.conductance);
+            filename = edu.washington.riekelab.baudin.resources.ConductanceFilenameLookup.CONDUCTANCE_FILENAMES(obj.conductances);
             resourcesFolder = what(fullfile('edu', 'washington', 'riekelab', 'baudin', 'resources'));
-            obj.conductanceData = fullfile(resourcesFolder.path, filename);
+            obj.conductanceData = load(fullfile(resourcesFolder.path, filename));
         end
         
         function didSetRig(obj)
@@ -55,7 +47,7 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
                 obj.rig.getDevice(obj.amp), obj.rig.getDevice('Excitatory conductance'),...
                 obj.rig.getDevice('Inhibitory conductance'), obj.rig.getDevice('Injected current'),...
                 obj.ExcReversal, obj.InhReversal);
-            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.numEpochs)
+            obj.showFigure('edu.washington.riekelab.figures.ProgressFigure', obj.numEpochs);
             
             %set the backgrounds on the conductance commands
             %0.05 V command per 1 nS conductance
@@ -103,7 +95,6 @@ classdef DynamicClampRepeatedSeedNoise < edu.washington.riekelab.protocols.Rieke
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             epoch.addResponse(obj.rig.getDevice('Injected current'));
             
-            %             epoch.addParameter('excitatoryConductance', excConductance);
             epoch.addParameter('excitatoryConductanceIdx', excConductanceIdx);
             epoch.addParameter('preTime', obj.conductanceData.preTime);
             epoch.addParameter('stimTime', obj.conductanceData.stimTime);
