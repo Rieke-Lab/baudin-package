@@ -17,18 +17,10 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
         interpulseInterval = 0.2
     end
     
-    properties (Constant)
-        CONDUCTANCE_FILENAMES = containers.Map( ...
-            {'foveal midget', 'peripheral midget', 'peripheral parasol'}, ...
-            {'foveal_midget_conductances.mat', ...
-            'peripheral_midget_conductances.mat', ...
-            'peripheral_parasol_conductances.mat'})
-    end
-    
     properties (Hidden)
         conductanceData
         conductancesType = symphonyui.core.PropertyType('char', 'row', ...
-            edu.washington.riekelab.baudin.protocols.DynamicClampRepeatedSeedNoise.CONDUCTANCE_PATH_LOOKUP.keys());
+            edu.washington.riekelab.baudin.resources.ConductanceFilenameLookup.CONDUCTANCE_FILENAMES.keys());
         ampType
         spikeRateFigure
         spikeRateAxes = [];
@@ -37,9 +29,9 @@ classdef DynamicClampConductanceScalingSpikeRate < edu.washington.riekelab.proto
     
     methods
         function loadConductanceData(obj)
-            filename = obj.CONDUCTANCE_FILENAMES(obj.conductance);
+            filename =edu.washington.riekelab.baudin.resources.ConductanceFilenameLookup.CONDUCTANCE_FILENAMES(obj.conductances);
             resourcesFolder = what(fullfile('edu', 'washington', 'riekelab', 'baudin', 'resources'));
-            obj.conductanceData = fullfile(resourcesFolder.path, filename);
+            obj.conductanceData = load(fullfile(resourcesFolder.path, filename));
         end
         
         function didSetRig(obj)
