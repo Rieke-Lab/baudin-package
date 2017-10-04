@@ -134,7 +134,7 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
 
         function val = get.totalEpochs(obj)
-            val = obj.numberOfAverages * 2;
+            val = double(obj.numberOfAverages) * 2;
         end
 
         function a = get.amp2(obj)
