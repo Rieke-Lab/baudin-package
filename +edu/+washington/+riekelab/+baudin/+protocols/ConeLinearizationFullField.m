@@ -96,7 +96,7 @@ classdef ConeLinearizationFullField < edu.washington.riekelab.protocols.RiekeLab
                 maskDiameterPix = obj.rig.getDevice('Stage').um2pix(obj.maskDiameter);
                 aperture = stage.builtin.stimuli.Rectangle();
                 aperture.position = canvasSize/2;
-                aperture.color = obj.isomerizationsToColor(mean([leftStimulus(1), rightStimulus(1)]));
+                aperture.color = obj.isomerizationsToColor(obj.backgroundIsomerizations);
                 aperture.size = [max(canvasSize) max(canvasSize)];
                 mask = stage.core.Mask.createCircularAperture(maskDiameterPix/max(canvasSize), 1024); %circular aperture
                 aperture.setMask(mask);
