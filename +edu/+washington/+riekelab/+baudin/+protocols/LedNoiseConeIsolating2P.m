@@ -4,15 +4,15 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
     % as a noise standard deviation - also in isomerizations.
     
     properties
-        redLedIsomPerVoltS              % S cone isomerizations per volt delivered to red led with given settings
-        redLedIsomPerVoltM              % M cone isomerizations per volt delivered to red led with given settings
-        redLedIsomPerVoltL              % L cone isomerizations per volt delivered to red led with given settings
-        blueLedIsomPerVoltS             % S cone isomerizations per volt delivered to blue led with given settings
-        blueLedIsomPerVoltM             % M cone isomerizations per volt delivered to blue led with given settings
-        blueLedIsomPerVoltL             % L cone isomerizations per volt delivered to blue led with given settings
-        uvLedIsomPerVoltS               % S cone isomerizations per volt delivered to uv led with given settings
-        uvLedIsomPerVoltM               % M cone isomerizations per volt delivered to uv led with given settings
-        uvLedIsomPerVoltL               % L cone isomerizations per volt delivered to uv led with given settings
+        redLedIsomPerVoltS = 0          % S cone isomerizations per volt delivered to red led with given settings
+        redLedIsomPerVoltM = 0          % M cone isomerizations per volt delivered to red led with given settings
+        redLedIsomPerVoltL = 0          % L cone isomerizations per volt delivered to red led with given settings
+        blueLedIsomPerVoltS = 0         % S cone isomerizations per volt delivered to blue led with given settings
+        blueLedIsomPerVoltM = 0         % M cone isomerizations per volt delivered to blue led with given settings
+        blueLedIsomPerVoltL = 0         % L cone isomerizations per volt delivered to blue led with given settings
+        uvLedIsomPerVoltS = 0           % S cone isomerizations per volt delivered to uv led with given settings
+        uvLedIsomPerVoltM = 0           % M cone isomerizations per volt delivered to uv led with given settings
+        uvLedIsomPerVoltL = 0           % L cone isomerizations per volt delivered to uv led with given settings
         preTime = 100                   % Noise leading duration (ms)
         stimTime = 600                  % Noise duration (ms)
         tailTime = 100                  % Noise trailing duration (ms)
@@ -20,7 +20,7 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
         meanIsomerizations = 1000       % Mean number of isomerizations for noise and background in units of isomerizations
         stdvIsomerizations = 500        % Noise standard deviation in units of isomerizations
-        coneTypeToStimulate             % Type of cone that this stimulus will isolate
+        coneTypeToStimulate = edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.S_CONE   % Type of cone that this stimulus will isolate
         useRandomSeed = false           % Use a random seed for each standard deviation multiple?
         amp                             % Input amplifier
     end
@@ -44,15 +44,19 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         lmsStdvIsomerizations
         
         coneTypeToStimulateIndex
+        
+        redLed
+        blueLed
+        uvLed
     end
     
     properties (Hidden)
         coneTypeToStimulateType = symphonyui.core.PropertyType( ...
             'char',  ...
             'row', ...
-            {edu.washington.riekelab.baudin.protocols.LedNoiseConIsolating2P.S_CONE, ...
-            edu.washington.riekelab.baudin.protocols.LedNoiseConIsolating2P.M_CONE, ...
-            edu.washington.riekelab.baudin.protocols.LedNoiseConIsolating2P.L_CONE})
+            {edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.S_CONE, ...
+            edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.M_CONE, ...
+            edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.L_CONE})
         ampType
     end
     
@@ -91,14 +95,25 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         end
         
         function value = get.lmsMeanIsomerizations(obj)
-            value = zeros(1, 3);
-            value(obj.coneTypeToStimulateIndex) = obj.meanIsomerizations;
+            value = obj.meanIsomerizations * ones(3, 1);
         end
         
         
         function value = get.lmsStdvIsomerizations(obj)
-            value = zeros(1, 3);
+            value = zeros(3, 1);
             value(obj.coneTypeToStimulateIndex) = obj.stdvIsomerizations;
+        end
+        
+        function value = get.redLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.RED_LED);
+        end
+        
+        function value = get.blueLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.BLUE_LED);
+        end
+        
+        function value = get.uvLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.UV_LED);
         end
         
         function didSetRig(obj)
@@ -135,16 +150,13 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
             
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
-                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp), ...
-                    'groupBy', {'stdv'});
+                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
                 obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
                     'baselineRegion', [0 obj.preTime], ...
                     'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
-                obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2), ...
-                    'groupBy1', {'stdv'}, ...
-                    'groupBy2', {'stdv'});
+                obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, obj.rig.getDevice(obj.amp2), {@mean, @var}, ...
                     'baselineRegion1', [0 obj.preTime], ...
                     'measurementRegion1', [obj.preTime obj.preTime+obj.stimTime], ...
@@ -152,11 +164,14 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
                     'measurementRegion2', [obj.preTime obj.preTime+obj.stimTime]);
             end
             
-            device = obj.rig.getDevice(obj.led);
-            device.background = symphonyui.core.Measurement(obj.lightMean, device.background.displayUnits);
+            rbuMean = obj.lmsToRbu * obj.lmsMeanIsomerizations;
+
+            obj.redLed.background = symphonyui.core.Measurement(rbuMean(1), obj.redLed.background.displayUnits);
+            obj.blueLed.background = symphonyui.core.Measurement(rbuMean(2), obj.blueLed.background.displayUnits);
+            obj.uvLed.background = symphonyui.core.Measurement(rbuMean(3), obj.uvLed.background.displayUnits);
         end
         
-        function stim = createLedStimulus(obj, seed, voltageMean, voltageStdv)
+        function stim = createLedStimulus(obj, seed, voltageMean, voltageStdv, deviceDisplayUnits)
             gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             gen.preTime = obj.preTime;
@@ -168,7 +183,7 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
             gen.mean = voltageMean;
             gen.seed = seed;
             gen.sampleRate = obj.sampleRate;
-            gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
+            gen.units = deviceDisplayUnits;
             
             if strcmp(gen.units, symphonyui.core.Measurement.NORMALIZED)
                 gen.upperLimit = 1;
@@ -194,18 +209,15 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
             rbuMean = obj.lmsToRbu * obj.lmsMeanIsomerizations;
             rbuStdv = obj.lmsToRbu * obj.lmsStdvIsomerizations;
             
-            redStim = obj.createLedStimulus(seed, rbuMean(1), rbuStdv(1));
-            blueStim = obj.createLedStimulus(seed, rbuMean(2), rbuStdv(2));
-            uvStim = obj.createLedStimulus(seed, rbuMean(3), rbuStdv(3));
+            redStim = obj.createLedStimulus(seed, rbuMean(1), rbuStdv(1), obj.redLed.background.displayUnits);
+            blueStim = obj.createLedStimulus(seed, rbuMean(2), rbuStdv(2), obj.blueLed.background.displayUnits);
+            uvStim = obj.createLedStimulus(seed, rbuMean(3), rbuStdv(3), obj.uvLed.background.displayUnits);
             
             epoch.addParameter('seed', seed);
             
-            epoch.addStimulus( ...
-                obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.RED_LED), redStim);
-            epoch.addStimulus( ...
-                obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.BLUE_LED), blueStim);
-            epoch.addStimulus( ...
-                obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.UV_LED), uvStim);
+            epoch.addStimulus(obj.redLed, redStim);
+            epoch.addStimulus(obj.blueLed, blueStim);
+            epoch.addStimulus(obj.uvLed, uvStim);
             
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             
@@ -217,8 +229,9 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         function prepareInterval(obj, interval)
             prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
             
-            device = obj.rig.getDevice(obj.led);
-            interval.addDirectCurrentStimulus(device, device.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.redLed, obj.redLed.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.blueLed, obj.blueLed.background, obj.interpulseInterval, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.uvLed, obj.uvLed.background, obj.interpulseInterval, obj.sampleRate);
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
