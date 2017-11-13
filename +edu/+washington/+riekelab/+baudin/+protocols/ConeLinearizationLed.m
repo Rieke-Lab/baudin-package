@@ -67,7 +67,7 @@ classdef ConeLinearizationLed < edu.washington.riekelab.protocols.RiekeLabProtoc
             
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement( ...
-                obj.originalGenerator.waveshape(1), device.background.displayUnits);
+                obj.stimuli.background, device.background.displayUnits);
         end
         
         function constructStimulusGenerators(obj)
@@ -79,7 +79,7 @@ classdef ConeLinearizationLed < edu.washington.riekelab.protocols.RiekeLabProtoc
                 correctlySampledStimulus = @(stimulus) interp1( ...
                     (1:numel(stimulus)) / obj.inputStimulusSampleRate, ...
                     stimulus, ...
-                    (1:sampleRatePoints(stimulus)) / obj.sampleRate, ...
+                    (1:round(obj.sampleRate * numel(stimulus) / obj.inputStimulusSampleRate)) / obj.sampleRate, ...
                     'next', ...
                     'extrap');
             else
@@ -91,9 +91,12 @@ classdef ConeLinearizationLed < edu.washington.riekelab.protocols.RiekeLabProtoc
             obj.stimuli.names = fieldnames(stimulusVectors);
             obj.stimuli.generators = containers.Map(obj.stimuli.names, ...
                 cellfun( ...
-                @(x) obj.createGenerator(correctlySampledStimulus(stimulisVectors.(x))), ...
+                @(x) obj.createGenerator(correctlySampledStimulus(stimulusVectors.(x))), ...
                 obj.stimuli.names, ...
                 'UniformOutput', false));
+            % assumes all will have same background and that first point
+            % can be used as background
+            obj.stimuli.background = stimulusVectors.(obj.stimuli.names{1})(1) / obj.isomPerVolt;
         end
         
         function gen = createGenerator(obj, vector)
@@ -113,8 +116,9 @@ classdef ConeLinearizationLed < edu.washington.riekelab.protocols.RiekeLabProtoc
             % boolean to control whether or not modified stimulus vector is
             % used (every other epoch, so if epochNum is even)
             % useModified = iseven(obj.numEpochsPrepared);
-            stimulusNameIndex = mod(obj.numEpochsCompleted, numel(obj.stimuli.names)) + 1;
+            stimulusNameIndex = mod(obj.numEpochsPrepared - 1, numel(obj.stimuli.names)) + 1;
             stimulusName = obj.stimuli.names{stimulusNameIndex};
+            disp(stimulusName);
             epoch.addParameter('stimulusType', stimulusName);
             epoch.addStimulus(obj.rig.getDevice(obj.led), obj.createLedStimulus(stimulusName));
             epoch.addResponse(obj.rig.getDevice(obj.amp));

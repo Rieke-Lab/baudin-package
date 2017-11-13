@@ -63,6 +63,9 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
         S_CONE = 's cone';
         M_CONE = 'm cone';
         L_CONE = 'l cone';
+        
+        LED_MAX = 10.239;
+        LED_MIN = -10.24;
     end
     
     methods
@@ -74,7 +77,7 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
         end
         
         function value = get.lmsToRgu(obj)
-            value = inv(obj.rbuToLms);
+            value = inv(obj.rguToLms);
         end
         
         function value = get.lmsMeanIsomerizations(obj)
@@ -83,19 +86,22 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
         
         
         function value = get.lmsStdvIsomerizations(obj)
-            value = obj.lmsMeanIsomerizations .* [obj.lStdvContrast obj.mStdvContrast obj.sStdvContrast];
+            value = obj.lmsMeanIsomerizations .* [obj.lStdvContrast; obj.mStdvContrast; obj.sStdvContrast];
         end
         
         function value = get.redLed(obj)
-            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.RED_LED);
+            value = obj.rig.getDevice( ...
+                edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.RED_LED);
         end
         
         function value = get.greenLed(obj)
-            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.GREEN_LED);
+            value = obj.rig.getDevice( ...
+                edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.GREEN_LED);
         end
         
         function value = get.uvLed(obj)
-            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.UV_LED);
+            value = obj.rig.getDevice( ...
+                edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.UV_LED);
         end
         
         function didSetRig(obj)
@@ -134,7 +140,7 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
             rguMean = obj.lmsToRgu * obj.lmsMeanIsomerizations;
 
             obj.redLed.background = symphonyui.core.Measurement(rguMean(1), obj.redLed.background.displayUnits);
-            obj.blueLed.background = symphonyui.core.Measurement(rguMean(2), obj.greenLed.background.displayUnits);
+            obj.greenLed.background = symphonyui.core.Measurement(rguMean(2), obj.greenLed.background.displayUnits);
             obj.uvLed.background = symphonyui.core.Measurement(rguMean(3), obj.uvLed.background.displayUnits);
         end
         
@@ -157,11 +163,20 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
                 gen.upperLimit = 1;
                 gen.lowerLimit = 0;
             else
-                gen.upperLimit = 10.239;
-                gen.lowerLimit = -10.24;
+                gen.upperLimit = edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX;
+                gen.lowerLimit = edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MIN;
             end
             
             stim = gen.generate();
+            
+            % print a warning about fraction of points at boundaries
+            numOutOfRange = ...
+                sum(stim.getData() <= 0) ...
+                + sum(stim.getData() == edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX);
+            if numOutOfRange > 0
+               fprintf('Warning! %.2f percent of points were out LED bounds and therefore truncated.\n', ...
+                   100 * numOutOfRange / numel(stim.getData())); 
+            end
         end
         
         function prepareEpoch(obj, epoch)
@@ -173,20 +188,20 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
                 seed = RandStream.shuffleSeed;
             end
             
-            rguMean = obj.lmsToRbu * obj.lmsMeanIsomerizations;
-            rguStdv = obj.lmsToRbu * obj.lmsStdvIsomerizations;
+            rguMean = obj.lmsToRgu * obj.lmsMeanIsomerizations;
+            rguStdv = obj.lmsToRgu * obj.lmsStdvIsomerizations;
             
             redStim = obj.createLedStimulus( ...
                 seed, rguMean(1), abs(rguStdv(1)), obj.redLed.background.displayUnits, rguStdv(1) < 0);
-            blueStim = obj.createLedStimulus( ...
-                seed, rguMean(2), abs(rguStdv(2)), obj.blueLed.background.displayUnits, rguStdv(2) < 0);
+            greenStim = obj.createLedStimulus( ...
+                seed, rguMean(2), abs(rguStdv(2)), obj.greenLed.background.displayUnits, rguStdv(2) < 0);
             uvStim = obj.createLedStimulus( ...
                 seed, rguMean(3), abs(rguStdv(3)), obj.uvLed.background.displayUnits, rguStdv(3) < 0);
             
             epoch.addParameter('seed', seed);
             
             epoch.addStimulus(obj.redLed, redStim);
-            epoch.addStimulus(obj.blueLed, blueStim);
+            epoch.addStimulus(obj.greenLed, greenStim);
             epoch.addStimulus(obj.uvLed, uvStim);
             
             epoch.addResponse(obj.rig.getDevice(obj.amp));
@@ -202,7 +217,7 @@ classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.Rieke
             interval.addDirectCurrentStimulus( ...
                 obj.redLed, obj.redLed.background, obj.interpulseInterval, obj.sampleRate);
             interval.addDirectCurrentStimulus( ...
-                obj.blueLed, obj.greenLed.background, obj.interpulseInterval, obj.sampleRate);
+                obj.greenLed, obj.greenLed.background, obj.interpulseInterval, obj.sampleRate);
             interval.addDirectCurrentStimulus( ...
                 obj.uvLed, obj.uvLed.background, obj.interpulseInterval, obj.sampleRate);
         end
