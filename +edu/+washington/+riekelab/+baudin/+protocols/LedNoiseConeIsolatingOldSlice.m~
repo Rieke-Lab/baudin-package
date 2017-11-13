@@ -1,4 +1,4 @@
-classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef LedNoiseConeIsolatingOldSlice < edu.washington.riekelab.protocols.RiekeLabProtocol
     % Presents Gaussian noise stimuli intended to stimulate a signle cone.
     % Stimulus will have a specified mean number of isomerizations as well
     % as a noise standard deviation - also in isomerizations.
@@ -7,22 +7,26 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         redLedIsomPerVoltS = 0          % S cone isomerizations per volt delivered to red led with given settings
         redLedIsomPerVoltM = 0          % M cone isomerizations per volt delivered to red led with given settings
         redLedIsomPerVoltL = 0          % L cone isomerizations per volt delivered to red led with given settings
-        blueLedIsomPerVoltS = 0         % S cone isomerizations per volt delivered to blue led with given settings
-        blueLedIsomPerVoltM = 0         % M cone isomerizations per volt delivered to blue led with given settings
-        blueLedIsomPerVoltL = 0         % L cone isomerizations per volt delivered to blue led with given settings
+        greenLedIsomPerVoltS = 0        % S cone isomerizations per volt delivered to green led with given settings
+        greenLedIsomPerVoltM = 0        % M cone isomerizations per volt delivered to green led with given settings
+        greenLedIsomPerVoltL = 0        % L cone isomerizations per volt delivered to green led with given settings
         uvLedIsomPerVoltS = 0           % S cone isomerizations per volt delivered to uv led with given settings
         uvLedIsomPerVoltM = 0           % M cone isomerizations per volt delivered to uv led with given settings
         uvLedIsomPerVoltL = 0           % L cone isomerizations per volt delivered to uv led with given settings
+        
         preTime = 100                   % Noise leading duration (ms)
         stimTime = 600                  % Noise duration (ms)
         tailTime = 100                  % Noise trailing duration (ms)
+        
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
+        useRandomSeed = false           % Use a random seed for each standard deviation multiple?
+        
         meanIsomerizations = 1000       % Mean number of isomerizations for noise and background in units of isomerizations
         sStdvContrast = 0.5             % S cone noise standard deviation in units of contrast [-1 through 1]
         mStdvContrast = 0.5             % M cone noise standard deviation in units of contrast [-1 through 1]
         lStdvContrast = 0.5             % L cone noise standard deviation in units of contrast [-1 through 1]
-        useRandomSeed = false           % Use a random seed for each standard deviation multiple?
+        
         amp                             % Input amplifier
     end
     
@@ -31,22 +35,20 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
     end
     
     properties
-        numberOfAverages = uint16(5)    % Number of families
+        numberOfAverages = uint16(10)   % Number of epochs to deliver
         interpulseInterval = 0          % Duration between noise stimuli (s)
     end
     
-    properties (Hidden, Dependent)
-        pulsesInFamily
-        
-        rbuToLms
-        lmsToRbu
+    properties (Hidden, Dependent)        
+        rgbToLms
+        lmsToRgb
         
         lmsMeanIsomerizations
         lmsStdvIsomerizations
         
         redLed
+        greenLed
         blueLed
-        uvLed
     end
     
     properties (Hidden)
@@ -55,7 +57,7 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
     
     properties (Constant)
         RED_LED = 'Red LED';
-        BLUE_LED = 'Blue LED';
+        GREEN_LED = 'Green LED';
         UV_LED = 'UV LED';
         
         S_CONE = 's cone';
@@ -65,26 +67,14 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
     
     methods
         
-        function value = get.rbuToLms(obj)
-            value = [obj.redLedIsomPerVoltL obj.blueLedIsomPerVoltL obj.uvLedIsomPerVoltL; ...
-                obj.redLedIsomPerVoltM obj.blueLedIsomPerVoltM obj.uvLedIsomPerVoltM; ...
-                obj.redLedIsomPerVoltS obj.blueLedIsomPerVoltS obj.uvLedIsomPerVoltS];
+        function value = get.rgbToLms(obj)
+            value = [obj.redLedIsomPerVoltL obj.greenLedIsomPerVoltL obj.blueLedIsomPerVoltL; ...
+                obj.redLedIsomPerVoltM obj.greenLedIsomPerVoltM obj.blueLedIsomPerVoltM; ...
+                obj.redLedIsomPerVoltS obj.greenLedIsomPerVoltS obj.blueLedIsomPerVoltS];
         end
         
-        function value = get.lmsToRbu(obj)
+        function value = get.lmsToRgb(obj)
             value = inv(obj.rbuToLms);
-        end
-        
-        function value = get.coneTypeToStimulateIndex(obj)
-            value = [];
-            switch obj.coneTypeToStimulate
-                case edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.L_CONE
-                    value = 1;
-                case edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.M_CONE
-                    value = 2;
-                case edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.S_CONE
-                    value = 3;
-            end
         end
         
         function value = get.lmsMeanIsomerizations(obj)

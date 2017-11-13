@@ -19,9 +19,9 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         frequencyCutoff = 60            % Noise frequency cutoff for smoothing (Hz)
         numberOfFilters = 4             % Number of filters in cascade for noise smoothing
         meanIsomerizations = 1000       % Mean number of isomerizations for noise and background in units of isomerizations
-        sStdvContrast = 0.5             % S cone noise standard deviation in units of contrast [-1 through 1]
-        mStdvContrast = 0.5             % M cone noise standard deviation in units of contrast [-1 through 1]
-        lStdvContrast = 0.5             % L cone noise standard deviation in units of contrast [-1 through 1]
+        sStdvContrast = 0.5             % S cone noise standard deviation in units of contrast [-1 1]
+        mStdvContrast = 0.5             % M cone noise standard deviation in units of contrast
+        lStdvContrast = 0.5             % L cone noise standard deviation in units of contrast
         useRandomSeed = false           % Use a random seed for each standard deviation multiple?
         amp                             % Input amplifier
     end
@@ -44,12 +44,20 @@ classdef LedNoiseConeIsolating2P < edu.washington.riekelab.protocols.RiekeLabPro
         lmsMeanIsomerizations
         lmsStdvIsomerizations
         
+        coneTypeToStimulateIndex
+        
         redLed
         blueLed
         uvLed
     end
     
     properties (Hidden)
+        coneTypeToStimulateType = symphonyui.core.PropertyType( ...
+            'char',  ...
+            'row', ...
+            {edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.S_CONE, ...
+            edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.M_CONE, ...
+            edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolating2P.L_CONE})
         ampType
     end
     
