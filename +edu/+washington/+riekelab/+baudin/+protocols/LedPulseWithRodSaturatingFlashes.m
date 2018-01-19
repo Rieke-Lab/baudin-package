@@ -8,19 +8,19 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
     
     properties
         led                                 % Output LED
-        preTime = 10                        % Pulse leading duration (ms)
-        stimTime = 100                      % Pulse duration (ms)
+        preTime = 100                       % Pulse leading duration (ms)
+        stimTime = 10                       % Pulse duration (ms)
         tailTime = 400                      % Pulse trailing duration (ms)
         lightAmplitude = 0.1                % Pulse amplitude (V or norm. [0-1] depending on LED units)
         lightMean = 0                       % Pulse and LED background mean (V or norm. [0-1] depending on LED units)
         
         rodFlashLed                         % Output LED for rod flash
-        rodFlashPreTime                     % Time preceding rod saturating flash (ms)
-        rodFlashStimTime                    % Duration of rod saturating flash (ms)
-        rodFlashTailTime                    % Time following rod saturating flash (ms)
-        rodFlashAmplitude                   % Amplitude of rod flash (V or norm. [0-1] depending on LED units)
+        rodFlashPreTime = 100               % Time preceding rod saturating flash (ms)
+        rodFlashStimTime = 100              % Duration of rod saturating flash (ms)
+        rodFlashTailTime = 100              % Time following rod saturating flash (ms)
+        rodFlashAmplitude = 1               % Amplitude of rod flash (V or norm. [0-1] depending on LED units)
         
-        epochsBetweenRodFlashes = uint8(5)  % Number of epochs between rod flashes
+        epochsBetweenRodFlashes = uint16(5)  % Number of epochs between rod flashes
         
         amp                                 % Input amplifier
     end
@@ -37,13 +37,14 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
     properties (Hidden)
         ledType
         ampType
+        rodFlashLedType
     end
     
     properties (Hidden, Dependent = true)
         totalNumberOfEpochs
     end
     
-    properties (Constant)
+    properties (Hidden, Constant = true)
        EPOCH_NUMBER = 'epochNumber'; 
        IS_ROD_ADAPTING_FLASH_RESPONSE = 'isRodAdaptingFlashResponse'
     end
@@ -112,14 +113,14 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
         
         function updateLedPulseResponseFigure(obj, figureHandler, epoch)
             if ~epoch.parameters( ...
-                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturationFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
+                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
                 obj.updateFigureMeanTrace(figureHandler, epoch);
             end
         end
         
         function updateRodFlashResponseFigure(obj, figureHandler, epoch)
             if epoch.parameters( ...
-                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturationFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
+                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
                 obj.updateFigureMeanTrace(figureHandler, epoch);
             end
         end
@@ -135,7 +136,7 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
                 previousFraction * figureData.lineHandle.YData ...
                 + newFraction * epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
             
-            figureData.numberOfPreviousEpochs = figureData.numberOfPreviousEpochs + 1;
+            figureData.epochCount = figureData.epochCount + 1;
         end
         
         function stim = createLedStimulus(obj)
@@ -173,19 +174,21 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
                 % rod saturating flash
                 epoch.addStimulus(obj.rig.getDevice(obj.rodFlashLed), obj.createRodFlashStimulus());
                 epoch.addParameter( ...
-                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturationFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE, ...
+                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE, ...
                     true);
             else
                 % normal stimulus
                 epoch.addStimulus(obj.rig.getDevice(obj.led), obj.createLedStimulus());
                 epoch.addParameter( ...
-                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturationFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE, ...
+                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE, ...
                     false);
             end
             
             epoch.addParameter( ...
-                edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturationFlashes.EPOCH_NUMBER, ...
+                edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.EPOCH_NUMBER, ...
                 obj.numEpochsPrepared);
+            
+            epoch.addResponse(obj.rig.getDevice(obj.amp));
             
             if numel(obj.rig.getDeviceNames('Amp')) >= 2
                 epoch.addResponse(obj.rig.getDevice(obj.amp2));
@@ -200,7 +203,9 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
         end
         
         function value = get.totalNumberOfEpochs(obj)
-           value = obj.numberOfAverages + ceil(obj.numberOfAverages / obj.epochsBetweenRodFlashes);
+           value = ...
+               double(obj.numberOfAverages) ...
+               + ceil(double(obj.numberOfAverages) / double(obj.epochsBetweenRodFlashes));
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
@@ -224,11 +229,12 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
     end
     
     methods (Static)
-        function FormatCustomFigure(figureHandle, titleString, time)
-           axesHandle = axes(figureHandle);
-           
-           axesHandle.XLabel.String = 'time (ms)';
-           axesHandle.Ylabel.String = 'response (mV or pA)';
+        function FormatCustomFigure(figureHandler, titleString, time)
+            figureHandle = figureHandler.getFigureHandle();
+            axesHandle = axes(figureHandle);
+            
+            axesHandle.XLabel.String = 'time (ms)';
+           axesHandle.YLabel.String = 'response (mV or pA)';
            axesHandle.Title.String = titleString;
            
            figureHandle.UserData = struct;
