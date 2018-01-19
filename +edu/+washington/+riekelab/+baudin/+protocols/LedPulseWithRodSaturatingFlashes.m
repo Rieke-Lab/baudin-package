@@ -45,8 +45,8 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
     end
     
     properties (Hidden, Constant = true)
-       EPOCH_NUMBER = 'epochNumber'; 
-       IS_ROD_ADAPTING_FLASH_RESPONSE = 'isRodAdaptingFlashResponse'
+        EPOCH_NUMBER = 'epochNumber';
+        IS_ROD_ADAPTING_FLASH_RESPONSE = 'isRodAdaptingFlashResponse'
     end
     
     methods
@@ -80,8 +80,11 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
                     'baselineRegion', [0 obj.preTime], ...
                     'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
                 
-                % make mean response figures for regular LED pulse and rod
-                % adapting flashes
+                % make custom figure for mean responses and to led pulses
+                % and rod flashes
+                customFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateFigure);
+                obj.formatCustomFigure(customFigure.getFigureHandler());
+                
                 millisecondsToPoints = @(x) x * obj.sampleRate / 1e3;
                 ledPulseResponseFigure = ...
                     obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateLedPulseResponseFigure);
@@ -111,32 +114,24 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
             device.background = symphonyui.core.Measurement(obj.lightMean, device.background.displayUnits);
         end
         
-        function updateLedPulseResponseFigure(obj, figureHandler, epoch)
-            if ~epoch.parameters( ...
-                    edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
-                obj.updateFigureMeanTrace(figureHandler, epoch);
-            end
-        end
-        
-        function updateRodFlashResponseFigure(obj, figureHandler, epoch)
+        function updateFigure(obj, figureHandler, epoch)
             if epoch.parameters( ...
                     edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.IS_ROD_ADAPTING_FLASH_RESPONSE)
-                obj.updateFigureMeanTrace(figureHandler, epoch);
+                obj.updateLine(figureHandler.getFigureHandle().UserData.rodFlashLineHandle, epoch);
+            else
+                obj.updateLine(figureHandler.getFigureHandle().UserData.ledPulseLineHandle, epoch);
             end
         end
         
-        function updateFigureMeanTrace(obj, figureHandler, epoch)
-            figureData = figureHandler.getFigureHandle().UserData;
-            numberOfPreviousEpochs = figureData.epochCount;
+        function updateLine(obj, lineHandle, epoch)
+            previousFraction = lineHandle.UserData / (lineHandle.UserData + 1);
+            newFraction = 1 / (lineHandle.UserData + 1);
             
-            previousFraction = numberOfPreviousEpochs / (numberOfPreviousEpochs + 1);
-            newFraction = 1 / (numberOfPreviousEpochs + 1);
-            
-            figureData.lineHandle.YData = ...
-                previousFraction * figureData.lineHandle.YData ...
+            lineHandle.YData = ...
+                previousFraction * lineHandle.YData ...
                 + newFraction * epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
             
-            figureData.epochCount = figureData.epochCount + 1;
+            lineHandle.UserData = lineHandle.UserData + 1;
         end
         
         function stim = createLedStimulus(obj)
@@ -203,9 +198,9 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
         end
         
         function value = get.totalNumberOfEpochs(obj)
-           value = ...
-               double(obj.numberOfAverages) ...
-               + ceil(double(obj.numberOfAverages) / double(obj.epochsBetweenRodFlashes));
+            value = ...
+                double(obj.numberOfAverages) ...
+                + ceil(double(obj.numberOfAverages) / double(obj.epochsBetweenRodFlashes));
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
@@ -226,22 +221,31 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
             end
         end
         
-    end
-    
-    methods (Static)
-        function FormatCustomFigure(figureHandler, titleString, time)
-            figureHandle = figureHandler.getFigureHandle();
+        function formatCustomFigure(obj, figureHandle)
             axesHandle = axes(figureHandle);
             
             axesHandle.XLabel.String = 'time (ms)';
-           axesHandle.YLabel.String = 'response (mV or pA)';
-           axesHandle.Title.String = titleString;
-           
-           figureHandle.UserData = struct;
-           figureHandle.UserData.axesHandle = axesHandle;
-           figureHandle.UserData.epochCount = 0;
-           figureHandle.UserData.lineHandle = plot(axesHandle, time, zeros(1, numel(time)));
+            axesHandle.YLabel.String = 'response (mV or pA)';
+            axesHandle.Title.String = titleString;
+            
+            figureHandle.UserData = struct;
+            figureHandle.UserData.axesHandle = axesHandle;
+            
+            millisecondsToPoints = @(x) x * obj.sampleRate / 1e3;
+            ledPulseTotalPoints = millisecondsToPoints(obj.preTime + obj.stimTime + obj.tailTime);
+            ledPulseTime = ((1:ledPulseTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
+            
+            rodFlashTotalPoints = ...
+                millisecondsToPoints(obj.rodFlashPreTime + obj.rodFlashStimTime + obj.rodFlashTailTime);
+            rodFlashTime = ((1:rodFlashTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
+            
+            figureHandle.UserData.ledPulseLineHandle = plot(axesHandle, time, zeros(1, numel(ledPulseTime)), ...
+                'UserData', 0);
+            figureHandle.UserData.rodFlashLineHandle = plot(axesHandle, time, zeros(1, numel(rodFlashTime)), ...
+                'UserData', 0);
+            
+            legend(axesHandle, 'LED Pulse', 'Rod Flash');
         end
-    end    
+    end
 end
 
