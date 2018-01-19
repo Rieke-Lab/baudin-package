@@ -83,23 +83,7 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
                 % make custom figure for mean responses and to led pulses
                 % and rod flashes
                 customFigure = obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateFigure);
-                obj.formatCustomFigure(customFigure.getFigureHandler());
-                
-                millisecondsToPoints = @(x) x * obj.sampleRate / 1e3;
-                ledPulseResponseFigure = ...
-                    obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateLedPulseResponseFigure);
-                ledPulseTotalPoints = millisecondsToPoints(obj.preTime + obj.stimTime + obj.tailTime);
-                ledPulseResponseTime = ((1:ledPulseTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
-                edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.FormatCustomFigure( ...
-                    ledPulseResponseFigure, 'LED Pulse Mean Response', ledPulseResponseTime)
-                
-                rodFlashResponseFigure = ...
-                    obj.showFigure('symphonyui.builtin.figures.CustomFigure', @obj.updateRodFlashResponseFigure);
-                rodFlashTotalPoints = ...
-                    millisecondsToPoints(obj.rodFlashPreTime + obj.rodFlashStimTime + obj.rodFlashTailTime);
-                rodFlashResponseTime = ((1:rodFlashTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
-                edu.washington.riekelab.baudin.protocols.LedPulseWithRodSaturatingFlashes.FormatCustomFigure( ...
-                    rodFlashResponseFigure, 'Rod Flash Mean Response', rodFlashResponseTime)
+                obj.formatCustomFigure(customFigure.getFigureHandle());
             else
                 obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
                 obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
@@ -222,29 +206,41 @@ classdef LedPulseWithRodSaturatingFlashes < edu.washington.riekelab.protocols.Ri
         end
         
         function formatCustomFigure(obj, figureHandle)
-            axesHandle = axes(figureHandle);
+            % hacky way to size figure, hopefully only on first run through
+            if isempty(figureHandle.Children)
+                figureHandle.Position(3) = 900;
+                figureHandle.Position(4) = 350;
+            end
             
-            axesHandle.XLabel.String = 'time (ms)';
-            axesHandle.YLabel.String = 'response (mV or pA)';
-            axesHandle.Title.String = titleString;
-            
+            clf(figureHandle)
             figureHandle.UserData = struct;
-            figureHandle.UserData.axesHandle = axesHandle;
+            ledPulseAxesHandle = subplot(1, 2, 1, 'Parent', figureHandle);
+            rodFlashAxesHandle = subplot(1, 2, 2, 'Parent', figureHandle);
             
             millisecondsToPoints = @(x) x * obj.sampleRate / 1e3;
             ledPulseTotalPoints = millisecondsToPoints(obj.preTime + obj.stimTime + obj.tailTime);
             ledPulseTime = ((1:ledPulseTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
-            
             rodFlashTotalPoints = ...
                 millisecondsToPoints(obj.rodFlashPreTime + obj.rodFlashStimTime + obj.rodFlashTailTime);
             rodFlashTime = ((1:rodFlashTotalPoints) * 1e3 / obj.sampleRate) - obj.preTime;
             
-            figureHandle.UserData.ledPulseLineHandle = plot(axesHandle, time, zeros(1, numel(ledPulseTime)), ...
-                'UserData', 0);
-            figureHandle.UserData.rodFlashLineHandle = plot(axesHandle, time, zeros(1, numel(rodFlashTime)), ...
-                'UserData', 0);
-            
-            legend(axesHandle, 'LED Pulse', 'Rod Flash');
+            figureHandle.UserData.ledPulseLineHandle = plot(ledPulseTime, zeros(1, numel(ledPulseTime)), ...
+                'UserData', 0, ...
+                'Parent', ledPulseAxesHandle);
+            figureHandle.UserData.rodFlashLineHandle = plot(rodFlashTime, zeros(1, numel(rodFlashTime)), ...
+                'UserData', 0, ...
+                'Parent', rodFlashAxesHandle);
+
+            ledPulseAxesHandle.XLabel.String = 'time (ms)';
+            ledPulseAxesHandle.YLabel.String = 'response (mV or pA)';
+            ledPulseAxesHandle.Title.String = 'LED Pulse Response';
+            ledPulseAxesHandle.XLim = [-obj.preTime (obj.stimTime + obj.tailTime)];
+            figureHandle.UserData.ledPulseAxesHandle = ledPulseAxesHandle;
+
+            rodFlashAxesHandle.XLabel.String = 'time (ms)';
+            rodFlashAxesHandle.Title.String = 'Rod Sat. Flash Response';
+            rodFlashAxesHandle.XLim = [-obj.rodFlashPreTime (obj.rodFlashStimTime + obj.rodFlashTailTime)];
+            figureHandle.UserData.rodFlashAxesHandle = rodFlashAxesHandle;
         end
     end
 end
