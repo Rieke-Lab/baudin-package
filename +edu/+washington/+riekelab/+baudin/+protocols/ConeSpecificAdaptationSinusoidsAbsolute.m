@@ -127,7 +127,7 @@ classdef ConeSpecificAdaptationSinusoidsAbsolute < edu.washington.riekelab.proto
             
             isCorrectConeType = @(x) (contrastNumber && strcmp(x, obj.coneOnConstantToStimulate)) ...
                 || (~contrastNumber && strcmp(x, obj.coneForChangingBackgrounds));
-            lmsContrasts = obj.sinusoidAbsoluteAmplitude * cellfun(isCorrectConeType, lmsTypes)' ./ lmsMeans;
+            lmsContrasts = obj.sinusoidAbsoluteAmplitude * cellfun(isCorrectConeType, lmsTypes)';
             coneWithStimulus = lmsTypes{cellfun(isCorrectConeType, lmsTypes)};
         end
         
