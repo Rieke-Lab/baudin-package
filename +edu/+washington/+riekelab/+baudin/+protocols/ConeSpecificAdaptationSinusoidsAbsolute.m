@@ -1,4 +1,4 @@
-classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.protocols.RiekeLabProtocol
+classdef ConeSpecificAdaptationSinusoidsAbsolute < edu.washington.riekelab.protocols.RiekeLabProtocol
     % Presents a set of rectangular pulse stimuli to a specified LED and records from a specified amplifier.
     
     properties
@@ -16,17 +16,17 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
         changingConeBackgrounds = [1e3 5e3];
         
         coneOnConstantToStimulate = ...
-            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.L_CONE
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.L_CONE
             
         coneForChangingBackgrounds = ...
-            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.M_CONE
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.M_CONE
         
         preTime = 200                    % Pulse leading duration (ms)
         stimTime = 1000                  % Pulse duration (ms)
         tailTime = 200                  % Pulse trailing duration (ms)
         
         
-        sinusoidContrast = 0.1;
+        sinusoidAbsoluteAmplitude = 100;
         sinusoidFrequency = 4
         
         amp                             % Input amplifier
@@ -43,9 +43,9 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
     
     properties (Hidden)
         coneOnConstantToStimulateType = symphonyui.core.PropertyType( ...
-            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.CONE_TYPES_LMS)
+            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.CONE_TYPES_LMS)
         coneForChangingBackgroundsType = symphonyui.core.PropertyType( ...
-            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.CONE_TYPES_LMS)
+            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.CONE_TYPES_LMS)
         ampType
     end
     
@@ -67,9 +67,9 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
         S_CONE = 's cone';
         M_CONE = 'm cone';
         L_CONE = 'l cone';
-        CONE_TYPES_LMS = {edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.L_CONE, ...
-            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.M_CONE, ...
-            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.S_CONE};
+        CONE_TYPES_LMS = {edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.L_CONE, ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.M_CONE, ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.S_CONE};
     end
     
     methods
@@ -83,7 +83,7 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
         function value = get.lmsToRgu(obj)
             value = inv(obj.rguToLms);
         end
-
+        
         function value = get.redLed(obj)
             value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.RED_LED);
         end
@@ -119,7 +119,7 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
             backgroundNumber = ceil(stimulusNumber / 2);
             contrastNumber = mod(stimulusNumber, 2) == 0;
             
-            lmsTypes = edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsContrast.CONE_TYPES_LMS;
+            lmsTypes = edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.CONE_TYPES_LMS;
             lmsMeans = ...
                 obj.constantConeBackground * cellfun(@(x) ~strcmp(x, obj.coneForChangingBackgrounds), lmsTypes)' ...
                 + obj.changingConeBackgrounds(backgroundNumber) ...
@@ -127,7 +127,7 @@ classdef ConeSpecificAdaptationSinusoidsContrast < edu.washington.riekelab.proto
             
             isCorrectConeType = @(x) (contrastNumber && strcmp(x, obj.coneOnConstantToStimulate)) ...
                 || (~contrastNumber && strcmp(x, obj.coneForChangingBackgrounds));
-            lmsContrasts = obj.sinusoidContrast * lmsMeans .* cellfun(isCorrectConeType, lmsTypes)';
+            lmsContrasts = obj.sinusoidAbsoluteAmplitude * cellfun(isCorrectConeType, lmsTypes)' ./ lmsMeans;
             coneWithStimulus = lmsTypes{cellfun(isCorrectConeType, lmsTypes)};
         end
         
