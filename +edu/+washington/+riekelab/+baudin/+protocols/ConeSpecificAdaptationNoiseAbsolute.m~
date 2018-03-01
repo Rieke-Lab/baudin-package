@@ -1,0 +1,311 @@
+classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols.RiekeLabProtocol
+    % Presents a set of rectangular pulse stimuli to a specified LED and records from a specified amplifier.
+    
+    properties
+        redLedIsomPerVoltS = 0          % S cone isomerizations per volt delivered to red led with given settings
+        redLedIsomPerVoltM = 0          % M cone isomerizations per volt delivered to red led with given settings
+        redLedIsomPerVoltL = 0          % L cone isomerizations per volt delivered to red led with given settings
+        greenLedIsomPerVoltS = 0        % S cone isomerizations per volt delivered to green led with given settings
+        greenLedIsomPerVoltM = 0        % M cone isomerizations per volt delivered to green led with given settings
+        greenLedIsomPerVoltL = 0        % L cone isomerizations per volt delivered to green led with given settings
+        uvLedIsomPerVoltS = 0           % S cone isomerizations per volt delivered to uv led with given settings
+        uvLedIsomPerVoltM = 0           % M cone isomerizations per volt delivered to uv led with given settings
+        uvLedIsomPerVoltL = 0           % L cone isomerizations per volt delivered to uv led with given settings
+        
+        constantConeBackground = 1e3;
+        changingConeBackgrounds = [1e3 3e3];
+        
+        coneOnConstantToStimulate = ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.M_CONE
+            
+        coneForChangingBackgrounds = ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.L_CONE
+        
+        epochsPerConePerBackgroundPerCycle = 3;
+        numberOfCycles = 10;
+        
+        preTime = 400                    % Pulse leading duration (ms)
+        stimTime = 3000                  % Pulse duration (ms)
+        tailTime = 300                  % Pulse trailing duration (ms)
+        
+        backgroundChangeAdaptationTime = 5000;
+        betweenEpochTime = 0;
+        
+        constantBackgroundNoiseStdv = 100;
+        firstChangingBackgroundNoiseStdv = 100;
+        secondChangingBackgroundNoiseStdv = 300;
+        
+        frequencyCutoff = 60;
+        numberOfFilters = 4;
+        useRandomSeed = true;
+        
+        amp                             % Input amplifier
+    end
+    
+    properties (Dependent, SetAccess = private)
+        amp2                            % Secondary amplifier
+    end
+    
+    properties (Hidden)
+        coneOnConstantToStimulateType = symphonyui.core.PropertyType( ...
+            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.CONE_TYPES_LMS)
+        coneForChangingBackgroundsType = symphonyui.core.PropertyType( ...
+            'char', 'row', edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.CONE_TYPES_LMS)
+        ampType
+    end
+    
+    properties (Hidden, Access = private)
+       coneToStimulateByEpoch = []; 
+    end
+    
+    properties (Hidden, Dependent)
+        rguToLms
+        lmsToRgu
+        
+        redLed
+        greenLed
+        uvLed
+        
+        epochsPerBackgroundPerCycle
+        epochsPerCycle
+        totalNumberOfEpochs
+    end
+    properties (Constant)
+        RED_LED = 'Red LED';
+        GREEN_LED = 'Green LED';
+        UV_LED = 'UV LED';
+        
+        S_CONE = 's cone';
+        M_CONE = 'm cone';
+        L_CONE = 'l cone';
+        CONE_TYPES_LMS = {edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationNoiseAbsolute.L_CONE, ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationNoiseAbsolute.M_CONE, ...
+            edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationNoiseAbsolute.S_CONE};
+    end
+    
+    methods
+        
+        function value = get.rguToLms(obj)
+            value = [obj.redLedIsomPerVoltL obj.greenLedIsomPerVoltL obj.uvLedIsomPerVoltL; ...
+                obj.redLedIsomPerVoltM obj.greenLedIsomPerVoltM obj.uvLedIsomPerVoltM; ...
+                obj.redLedIsomPerVoltS obj.greenLedIsomPerVoltS obj.uvLedIsomPerVoltS];
+        end
+        
+        function value = get.lmsToRgu(obj)
+            value = inv(obj.rguToLms);
+        end
+        
+        function value = get.redLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.RED_LED);
+        end
+        
+        function value = get.greenLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.GREEN_LED);
+        end
+        
+        function value = get.uvLed(obj)
+            value = obj.rig.getDevice(edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.UV_LED);
+        end
+        
+        function value = get.epochsPerBackgroundPerCycle(obj)
+           value = 2 * obj.epochsPerConePerBackgroundPerCycle; 
+        end
+        
+        function value = get.epochsPerCycle(obj)
+           value = 2 * obj.epochsPerBackgroundPerCycle; 
+        end
+        
+        function value = get.totalNumberOfEpochs(obj)
+           value = obj.epochsPerCycle * obj.numberOfCycles;
+        end
+        
+        function didSetRig(obj)
+            didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
+            
+            [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
+        end
+        
+        function d = getPropertyDescriptor(obj, name)
+            d = getPropertyDescriptor@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, name);
+            
+            if strncmp(name, 'amp2', 4) && numel(obj.rig.getDeviceNames('Amp')) < 2
+                d.isHidden = true;
+            end
+        end
+        
+        function [lmsMeans, lmsStdvs, coneWithStimulus] = GetLmsIsomerizationsFromEpochNumber(obj, epochNumber)
+            % figure out background combination
+            lmsTypes = edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationNoiseAbsolute.CONE_TYPES_LMS;
+            
+            changingBackgroundIndex = 2 - (mod(floor((epochNumber - 1) / obj.epochsPerBackgroundPerCycle), 2) == 0);
+            
+            lmsMeanLookup = containers.Map(lmsTypes, num2cell(zeros(1, 3)));
+            lmsMeanLookup(obj.coneOnConstantToStimulate) = obj.constantConeBackground;
+            lmsMeanLookup(obj.coneForChangingBackgrounds) = obj.changingConeBackgrounds(changingBackgroundIndex);
+            
+            lmsMeans = reshape(cellfun(@(x) lmsMeanLookup(x), lmsTypes), [3 1]);
+            
+            % figure out cone for stimulus and L, M, and S standard
+            % deviations
+            lmsStdvLookup = containers.Map(lmsTypes, num2cell(zeros(1, 3)));
+            if obj.coneToStimulateByEpoch(epochNumber)
+                % if true, stimulate cone on constant background
+                coneWithStimulus = obj.coneOnConstantToStimulate;
+                lmsStdvLookup(coneWithStimulus) = obj.constantBackgroundNoiseStdv;
+            else
+                % if false, stimulate cone with changing background (also
+                % need to figure out what stdv to use here)
+                coneWithStimulus = obj.coneForChangingBackgrounds;
+                lmsStdvLookup(coneWithStimulus) = ...
+                    (changingBackgroundIndex == 1) * obj.firstChangingBackgroundNoiseStdv ...
+                    + (changingBackgroundIndex == 2) * obj.secondChangingBackgroundNoiseStdv ;
+            end
+            
+            lmsStdvs = reshape(cellfun(@(x) lmsStdvLookup(x), lmsTypes), [3 1]);
+        end
+        
+        function lmsMeans = GetLmsMeanIsomerizationsFromIntervalNumber(obj, intervalNumber)
+            % slightly different logic for relating interval number of lms
+            % means than was used for epoch number
+            lmsTypes = edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationNoiseAbsolute.CONE_TYPES_LMS;
+            
+            changingBackgroundIndex = 2 - (mod(floor((intervalNumber) / obj.epochsPerBackgroundPerCycle), 2) == 0);
+            
+            lmsMeanLookup = containers.Map(lmsTypes, num2cell(zeros(1, 3)));
+            lmsMeanLookup(obj.coneOnConstantToStimulate) = obj.constantConeBackground;
+            lmsMeanLookup(obj.coneForChangingBackgrounds) = obj.changingConeBackgrounds(changingBackgroundIndex);
+            
+            lmsMeans = reshape(cellfun(@(x) lmsMeanLookup(x), lmsTypes), [3 1]);
+        end
+        
+        function prepareRun(obj)
+            prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
+            
+            % check validity of selected cone types
+            if strcmp(obj.coneOnConstantToStimulate, obj.coneForChangingBackgrounds)
+                error('Cone to stimulate and cone for changing backgrounds cannot be the same');
+            end
+            
+            if numel(obj.rig.getDeviceNames('Amp')) < 2
+                obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
+                obj.showFigure('symphonyui.builtin.figures.MeanResponseFigure', obj.rig.getDevice(obj.amp));
+                obj.showFigure('symphonyui.builtin.figures.ResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, ...
+                    'baselineRegion', [0 obj.preTime], ...
+                    'measurementRegion', [obj.preTime obj.preTime+obj.stimTime]);
+            else
+                obj.showFigure('edu.washington.riekelab.figures.DualResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
+                obj.showFigure('edu.washington.riekelab.figures.DualMeanResponseFigure', obj.rig.getDevice(obj.amp), obj.rig.getDevice(obj.amp2));
+                obj.showFigure('edu.washington.riekelab.figures.DualResponseStatisticsFigure', obj.rig.getDevice(obj.amp), {@mean, @var}, obj.rig.getDevice(obj.amp2), {@mean, @var}, ...
+                    'baselineRegion1', [0 obj.preTime], ...
+                    'measurementRegion1', [obj.preTime obj.preTime+obj.stimTime], ...
+                    'baselineRegion2', [0 obj.preTime], ...
+                    'measurementRegion2', [obj.preTime obj.preTime+obj.stimTime]);
+            end
+            
+            obj.coneToStimulateByEpoch = obj.CreateStimulusOrderForRun();
+            
+            rguBackgrounds = obj.lmsToRgu * obj.GetLmsIsomerizationsFromEpochNumber(1);
+            
+            obj.redLed.background = symphonyui.core.Measurement(rguBackgrounds(1), obj.redLed.background.displayUnits);
+            obj.greenLed.background = symphonyui.core.Measurement( ...
+                rguBackgrounds(2), obj.greenLed.background.displayUnits);
+            obj.uvLed.background = symphonyui.core.Measurement(rguBackgrounds(3), obj.uvLed.background.displayUnits);
+        end
+        
+        function stimulusOrder = CreateStimulusOrderForRun(obj)
+             % create random boolean vector controlling which cone is
+            % stimluated for each epoch (each cone will be stimulated the
+            % same number of times on each background each cycle, but
+            % within the given background/cycle, the order will be random
+            singleCycleOrderedBooleans = ...
+                [true(1, obj.epochsPerConePerBackgroundPerCycle) false(1, obj.epochsPerConePerBackgroundPerCycle)];
+            stimulusOrder = cell2mat(arrayfun( ...
+                @(x) singleCycleOrderedBooleans(randperm(obj.epochsPerBackgroundPerCycle)), ...
+                (1:2 * obj.numberOfCycles), ...
+                'UniformOutput', false));
+        end
+        
+        function stim = createLedStimulus(obj, stimulusMean, stimulusAmplitude, device)
+            gen = symphonyui.builtin.stimuli.SineGenerator();
+            
+            gen.preTime = obj.preTime;
+            gen.stimTime = obj.stimTime;
+            gen.tailTime = obj.tailTime;
+            gen.amplitude = stimulusAmplitude;
+            gen.mean = stimulusMean;
+            gen.period = 1e3 / obj.sinusoidFrequency;
+            gen.sampleRate = obj.sampleRate;
+            gen.units = device.background.displayUnits;
+            
+            stim = gen.generate();
+        end
+        
+        function prepareEpoch(obj, epoch)
+            prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
+            
+            epochNumber = obj.numEpochsPrepared;
+            [lmsMeans, lmsContrasts, coneWithStimulus] = obj.GetLmsMeanIsomerizations(epochNumber);
+            
+            epoch.addParameter('lConeMean', lmsMeans(1));
+            epoch.addParameter('lConeStdv', lmsContrasts(1));
+            epoch.addParameter('mConeMean', lmsMeans(2));
+            epoch.addParameter('mConeStdv', lmsContrasts(2));
+            epoch.addParameter('sConeMean', lmsMeans(3));
+            epoch.addParameter('sConeStdv', lmsContrasts(3));
+            epoch.addParameter('coneWithStimulus', coneWithStimulus);
+            
+            rguMeans = obj.lmsToRgu * lmsMeans;
+            rguContrasts = obj.lmsToRgu * lmsContrasts;
+            disp(epochNumber);
+            disp(lmsContrasts)
+            disp(rguContrasts);
+            
+            epoch.addStimulus(obj.redLed, obj.createLedStimulus(rguMeans(1), rguContrasts(1), obj.redLed));
+            epoch.addStimulus(obj.greenLed, obj.createLedStimulus(rguMeans(2), rguContrasts(2), obj.greenLed));
+            epoch.addStimulus(obj.uvLed, obj.createLedStimulus(rguMeans(3), rguContrasts(3), obj.uvLed));
+            
+            epoch.addResponse(obj.rig.getDevice(obj.amp));
+            if numel(obj.rig.getDeviceNames('Amp')) >= 2
+                epoch.addResponse(obj.rig.getDevice(obj.amp2));
+            end
+        end
+        
+        function prepareInterval(obj, interval)
+            prepareInterval@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, interval);
+            
+            % figure out interpulse interval duration
+            intervalNumber = obj.numIntervalsPrepared;
+            if mod(intervalNumber, obj.epochsPerCycle) == 0
+                intervalDuration = obj.backgroundChangeAdaptationTime / 1e3;
+            else
+                intervalDuration = obj.betweenEpochTime / 1e3;
+            end
+            
+            rguMeans = obj.lmsToRgu * obj.GetLmsMeanIsomerizationsFromIntervalNumber(intervalNumber);
+            
+            interval.addDirectCurrentStimulus(obj.redLed, rguMeans(1), intervalDuration, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.greenLed, rguMeans(2), intervalDuration, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.uvLed, rguMeans(3), intervalDuration, obj.sampleRate);
+        end
+        
+        function tf = shouldContinuePreparingEpochs(obj)
+            tf = obj.numEpochsPrepared < obj.totalNumberOfEpochs;
+        end
+        
+        function tf = shouldContinueRun(obj)
+            tf = obj.numEpochsCompleted < obj.totalNumberOfEpochs;
+        end
+        
+        function a = get.amp2(obj)
+            amps = obj.rig.getDeviceNames('Amp');
+            if numel(amps) < 2
+                a = '(None)';
+            else
+                i = find(~ismember(amps, obj.amp), 1);
+                a = amps{i};
+            end
+        end
+        
+    end
+    
+end
