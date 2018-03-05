@@ -17,7 +17,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
         
         coneOnConstantToStimulate = ...
             edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.M_CONE
-            
+        
         coneForChangingBackgrounds = ...
             edu.washington.riekelab.baudin.protocols.ConeSpecificAdaptationSinusoidsAbsolute.L_CONE
         
@@ -55,7 +55,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
     end
     
     properties (Hidden, Access = private)
-       coneToStimulateByEpoch = []; 
+        coneToStimulateByEpoch = [];
     end
     
     properties (Hidden, Dependent)
@@ -108,15 +108,15 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
         end
         
         function value = get.epochsPerBackgroundPerCycle(obj)
-           value = 2 * obj.epochsPerConePerBackgroundPerCycle; 
+            value = 2 * obj.epochsPerConePerBackgroundPerCycle;
         end
         
         function value = get.epochsPerCycle(obj)
-           value = 2 * obj.epochsPerBackgroundPerCycle; 
+            value = 2 * obj.epochsPerBackgroundPerCycle;
         end
         
         function value = get.totalNumberOfEpochs(obj)
-           value = obj.epochsPerCycle * obj.numberOfCycles;
+            value = obj.epochsPerCycle * obj.numberOfCycles;
         end
         
         function didSetRig(obj)
@@ -213,7 +213,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
         end
         
         function stimulusOrder = CreateStimulusOrderForRun(obj)
-             % create random boolean vector controlling which cone is
+            % create random boolean vector controlling which cone is
             % stimluated for each epoch (each cone will be stimulated the
             % same number of times on each background each cycle, but
             % within the given background/cycle, the order will be random
@@ -256,18 +256,33 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             
             rguMeans = obj.lmsToRgu * lmsMeans;
             rguContrasts = obj.lmsToRgu * lmsContrasts;
-            disp(epochNumber);
-            disp(lmsContrasts)
-            disp(rguContrasts);
+                       
+            redStimulus = obj.createLedStimulus(rguMeans(1), rguContrasts(1), obj.redLed);
+            greenStimulus = obj.createLedStimulus(rguMeans(2), rguContrasts(2), obj.greenLed);
+            uvStimulus = obj.createLedStimulus(rguMeans(3), rguContrasts(3), obj.uvLed);
             
-            epoch.addStimulus(obj.redLed, obj.createLedStimulus(rguMeans(1), rguContrasts(1), obj.redLed));
-            epoch.addStimulus(obj.greenLed, obj.createLedStimulus(rguMeans(2), rguContrasts(2), obj.greenLed));
-            epoch.addStimulus(obj.uvLed, obj.createLedStimulus(rguMeans(3), rguContrasts(3), obj.uvLed));
+            epoch.addStimulus(obj.redLed, redStimulus);
+            epoch.addStimulus(obj.greenLed, greenStimulus);
+            epoch.addStimulus(obj.uvLed, uvStimulus);
             
             epoch.addResponse(obj.rig.getDevice(obj.amp));
             if numel(obj.rig.getDeviceNames('Amp')) >= 2
                 epoch.addResponse(obj.rig.getDevice(obj.amp2));
             end
+            
+            percentOutOfRange = @(x) 100 * (sum(x.getData() <= 0) ...
+                + sum(x.getData() == edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX));
+            
+            fprintf('Epoch: %i\n', epochNumber);
+            fprintf('l mean: %.2f, m mean: %.2f, s mean: %.2f\n', lmsMeans(1), lmsMeans(2), lmsMeans(3));
+            fprintf('l stdv: %.2f, m stdv: %.2f, s stdv: %.2f\n', lmsStdvs(1), lmsStdvs(2), lmsStdvs(3));
+            fprintf('cone with stimulus: %s\n', coneWithStimulus);
+            fprintf('red mean: %.2f, green mean: %.2f, uv mean: %.2f\n', rguMeans(1), rguMeans(2), rguMeans(3));
+            fprintf('red stdv: %.2f, green stdv: %.2f, uv stdv: %.2f\n', rguContrasts(1), rguContrasts(2), rguContrasts(3));
+            fprintf('red out of range: %.2f%%, green: %.2f%%, uv: %.2f%%\n\n', ...
+                percentOutOfRange(redStimulus), percentOutOfRange(greenStimulus), percentOutOfRange(uvStimulus));
+            
+            
         end
         
         function prepareInterval(obj, interval)
@@ -281,11 +296,16 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
                 intervalDuration = obj.betweenEpochTime / 1e3;
             end
             
-            rguMeans = obj.lmsToRgu * obj.GetLmsMeanIsomerizationsFromIntervalNumber(intervalNumber);
+            lmsMeans = obj.GetLmsMeanIsomerizationsFromIntervalNumber(intervalNumber);
+            rguMeans = obj.lmsToRgu * lmsMeans;
             
             interval.addDirectCurrentStimulus(obj.redLed, rguMeans(1), intervalDuration, obj.sampleRate);
             interval.addDirectCurrentStimulus(obj.greenLed, rguMeans(2), intervalDuration, obj.sampleRate);
             interval.addDirectCurrentStimulus(obj.uvLed, rguMeans(3), intervalDuration, obj.sampleRate);
+            
+            fprintf('Interval: %i\n', epochNumber);
+            fprintf('l mean: %.2f, m mean: %.2f, s mean: %.2f\n', lmsMeans(1), lmsMeans(2), lmsMeans(3));
+            fprintf('red mean: %.2f, green mean: %.2f, uv mean: %.2f\n\n', rguMeans(1), rguMeans(2), rguMeans(3));
         end
         
         function tf = shouldContinuePreparingEpochs(obj)
