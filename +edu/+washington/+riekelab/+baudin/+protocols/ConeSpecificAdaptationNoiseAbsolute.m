@@ -139,11 +139,9 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             
             changingBackgroundIndex = 2 - (mod(floor((epochNumber - 1) / obj.epochsPerBackgroundPerCycle), 2) == 0);
             
-            lmsMeanLookup = containers.Map(lmsTypes, num2cell(zeros(1, 3)));
-            lmsMeanLookup(obj.coneOnConstantToStimulate) = obj.constantConeBackground;
-            lmsMeanLookup(obj.coneForChangingBackgrounds) = obj.changingConeBackgrounds(changingBackgroundIndex);
-            
-            lmsMeans = reshape(cellfun(@(x) lmsMeanLookup(x), lmsTypes), [3 1]);
+            lmsMeans = obj.constantConeBackground * cellfun(@(x) ~strcmp(x, obj.coneForChangingBackgrounds), lmsTypes) ...
+                + obj.changingConeBackgrounds(changingBackgroundIndex) * cellfun(@(x) strcmp(x, obj.coneForChangingBackgrounds), lmsTypes);
+            lmsMeans = reshape(lmsMeans, [3, 1]);
             
             % figure out cone for stimulus and L, M, and S standard
             % deviations
@@ -171,11 +169,9 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             
             changingBackgroundIndex = 2 - (mod(floor((intervalNumber) / obj.epochsPerBackgroundPerCycle), 2) == 0);
             
-            lmsMeanLookup = containers.Map(lmsTypes, num2cell(zeros(1, 3)));
-            lmsMeanLookup(obj.coneOnConstantToStimulate) = obj.constantConeBackground;
-            lmsMeanLookup(obj.coneForChangingBackgrounds) = obj.changingConeBackgrounds(changingBackgroundIndex);
-            
-            lmsMeans = reshape(cellfun(@(x) lmsMeanLookup(x), lmsTypes), [3 1]);
+            lmsMeans = obj.constantConeBackground * cellfun(@(x) ~strcmp(x, obj.coneForChangingBackgrounds), lmsTypes) ...
+                + obj.changingConeBackgrounds(changingBackgroundIndex) * cellfun(@(x) strcmp(x, obj.coneForChangingBackgrounds), lmsTypes);
+            lmsMeans = reshape(lmsMeans, [3, 1]);
         end
         
         function prepareRun(obj)
@@ -225,17 +221,28 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
                 'UniformOutput', false));
         end
         
-        function stim = createLedStimulus(obj, stimulusMean, stimulusAmplitude, device)
-            gen = symphonyui.builtin.stimuli.SineGenerator();
+        function stim = createLedStimulus(obj, seed, voltageMean, voltageStdv, deviceDisplayUnits, inverted)
+            gen = edu.washington.riekelab.stimuli.GaussianNoiseGeneratorV2();
             
             gen.preTime = obj.preTime;
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
-            gen.amplitude = stimulusAmplitude;
-            gen.mean = stimulusMean;
-            gen.period = 1e3 / obj.sinusoidFrequency;
+            gen.stDev = voltageStdv;
+            gen.freqCutoff = obj.frequencyCutoff;
+            gen.numFilters = obj.numberOfFilters;
+            gen.mean = voltageMean;
+            gen.seed = seed;
+            gen.inverted = inverted;
             gen.sampleRate = obj.sampleRate;
-            gen.units = device.background.displayUnits;
+            gen.units = deviceDisplayUnits;
+            
+            if strcmp(gen.units, symphonyui.core.Measurement.NORMALIZED)
+                gen.upperLimit = 1;
+                gen.lowerLimit = 0;
+            else
+                gen.upperLimit = edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX;
+                gen.lowerLimit = edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MIN;
+            end
             
             stim = gen.generate();
         end
@@ -243,23 +250,32 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
+            if ~obj.useRandomSeed
+                seed = 0;
+            else
+                seed = RandStream.shuffleSeed;
+            end
+            
             epochNumber = obj.numEpochsPrepared;
-            [lmsMeans, lmsContrasts, coneWithStimulus] = obj.GetLmsMeanIsomerizations(epochNumber);
+            [lmsMeans, lmsStdvs, coneWithStimulus] = obj.GetLmsIsomerizationsFromEpochNumber(epochNumber);
             
             epoch.addParameter('lConeMean', lmsMeans(1));
-            epoch.addParameter('lConeStdv', lmsContrasts(1));
+            epoch.addParameter('lConeStdv', lmsStdvs(1));
             epoch.addParameter('mConeMean', lmsMeans(2));
-            epoch.addParameter('mConeStdv', lmsContrasts(2));
+            epoch.addParameter('mConeStdv', lmsStdvs(2));
             epoch.addParameter('sConeMean', lmsMeans(3));
-            epoch.addParameter('sConeStdv', lmsContrasts(3));
+            epoch.addParameter('sConeStdv', lmsStdvs(3));
             epoch.addParameter('coneWithStimulus', coneWithStimulus);
             
             rguMeans = obj.lmsToRgu * lmsMeans;
-            rguContrasts = obj.lmsToRgu * lmsContrasts;
-                       
-            redStimulus = obj.createLedStimulus(rguMeans(1), rguContrasts(1), obj.redLed);
-            greenStimulus = obj.createLedStimulus(rguMeans(2), rguContrasts(2), obj.greenLed);
-            uvStimulus = obj.createLedStimulus(rguMeans(3), rguContrasts(3), obj.uvLed);
+            rguStdvs = obj.lmsToRgu * lmsStdvs;
+            
+            redStimulus = obj.createLedStimulus( ...
+                seed, rguMeans(1), abs(rguStdvs(1)), obj.redLed.background.displayUnits, rguStdvs(1) < 0);
+            greenStimulus = obj.createLedStimulus( ...
+                seed, rguMeans(2), abs(rguStdvs(2)), obj.greenLed.background.displayUnits, rguStdvs(2) < 0);
+            uvStimulus = obj.createLedStimulus( ...
+                seed, rguMeans(3), abs(rguStdvs(3)), obj.uvLed.background.displayUnits, rguStdvs(3) < 0);
             
             epoch.addStimulus(obj.redLed, redStimulus);
             epoch.addStimulus(obj.greenLed, greenStimulus);
@@ -278,7 +294,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             fprintf('l stdv: %.2f, m stdv: %.2f, s stdv: %.2f\n', lmsStdvs(1), lmsStdvs(2), lmsStdvs(3));
             fprintf('cone with stimulus: %s\n', coneWithStimulus);
             fprintf('red mean: %.2f, green mean: %.2f, uv mean: %.2f\n', rguMeans(1), rguMeans(2), rguMeans(3));
-            fprintf('red stdv: %.2f, green stdv: %.2f, uv stdv: %.2f\n', rguContrasts(1), rguContrasts(2), rguContrasts(3));
+            fprintf('red stdv: %.2f, green stdv: %.2f, uv stdv: %.2f\n', rguStdvs(1), rguStdvs(2), rguStdvs(3));
             fprintf('red out of range: %.2f%%, green: %.2f%%, uv: %.2f%%\n\n', ...
                 percentOutOfRange(redStimulus), percentOutOfRange(greenStimulus), percentOutOfRange(uvStimulus));
             
@@ -299,11 +315,15 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             lmsMeans = obj.GetLmsMeanIsomerizationsFromIntervalNumber(intervalNumber);
             rguMeans = obj.lmsToRgu * lmsMeans;
             
-            interval.addDirectCurrentStimulus(obj.redLed, rguMeans(1), intervalDuration, obj.sampleRate);
-            interval.addDirectCurrentStimulus(obj.greenLed, rguMeans(2), intervalDuration, obj.sampleRate);
-            interval.addDirectCurrentStimulus(obj.uvLed, rguMeans(3), intervalDuration, obj.sampleRate);
+            redBackground = symphonyui.core.Measurement(rguMeans(1), obj.redLed.background.displayUnits);
+            greenBackground = symphonyui.core.Measurement(rguMeans(2), obj.greenLed.background.displayUnits);
+            uvBackground = symphonyui.core.Measurement(rguMeans(3), obj.uvLed.background.displayUnits);
             
-            fprintf('Interval: %i\n', epochNumber);
+            interval.addDirectCurrentStimulus(obj.redLed, redBackground, intervalDuration, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.greenLed, greenBackground, intervalDuration, obj.sampleRate);
+            interval.addDirectCurrentStimulus(obj.uvLed, uvBackground, intervalDuration, obj.sampleRate);
+            
+            fprintf('Interval: %i\n', intervalNumber);
             fprintf('l mean: %.2f, m mean: %.2f, s mean: %.2f\n', lmsMeans(1), lmsMeans(2), lmsMeans(3));
             fprintf('red mean: %.2f, green mean: %.2f, uv mean: %.2f\n\n', rguMeans(1), rguMeans(2), rguMeans(3));
         end

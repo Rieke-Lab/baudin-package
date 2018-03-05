@@ -193,9 +193,6 @@ classdef ConeSpecificAdaptationSinusoidsAbsolute < edu.washington.riekelab.proto
             
             rguMeans = obj.lmsToRgu * lmsMeans;
             rguContrasts = obj.lmsToRgu * lmsContrasts;
-            disp(epochNumber);
-            disp(lmsContrasts)
-            disp(rguContrasts);
             
             epoch.addStimulus(obj.redLed, obj.createLedStimulus(rguMeans(1), rguContrasts(1), obj.redLed));
             epoch.addStimulus(obj.greenLed, obj.createLedStimulus(rguMeans(2), rguContrasts(2), obj.greenLed));
