@@ -287,7 +287,8 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             end
             
             percentOutOfRange = @(x) 100 * (sum(x.getData() <= 0) ...
-                + sum(x.getData() == edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX));
+                + sum(x.getData() == edu.washington.riekelab.baudin.protocols.LedNoiseConeIsolatingOldSlice.LED_MAX)) ...
+                / (obj.sampleRate * obj.stimTime / 1e3);
             
             fprintf('Epoch: %i\n', epochNumber);
             fprintf('l mean: %.2f, m mean: %.2f, s mean: %.2f\n', lmsMeans(1), lmsMeans(2), lmsMeans(3));
