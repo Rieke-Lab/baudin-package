@@ -69,9 +69,10 @@ classdef Picospritzer < edu.washington.riekelab.protocols.RiekeLabProtocol
             gen.stimTime = obj.stimTime;
             gen.tailTime = obj.tailTime;
             gen.amplitude = 1;
-            gen.mean = obj.rig.getDevice(obj.amp).background.quantity;
+            gen.mean = 0;
             gen.sampleRate = obj.sampleRate;
-            gen.units = obj.rig.getDevice(obj.amp).background.displayUnits;
+            gen.units = obj.rig.getDevice( ...
+                edu.washington.riekelab.baudin.rigs.ConfocalWithPicospritzer.PICOSPRITZER).background.displayUnits;
             
             stim = gen.generate(); 
         end
@@ -107,7 +108,9 @@ classdef Picospritzer < edu.washington.riekelab.protocols.RiekeLabProtocol
         function prepareEpoch(obj, epoch)
             prepareEpoch@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, epoch);
             
-            epoch.addStimulus(obj.rig.getDevice('Picospritzer'), obj.createPicoStimulus());
+            epoch.addStimulus( ...
+                obj.rig.getDevice(edu.washington.riekelab.baudin.rigs.ConfocalWithPicospritzer.PICOSPRITZER), ...
+                obj.createPicoStimulus());
             
             epoch.addStimulus(obj.rig.getDevice(obj.amp), obj.createAmpStimulus());
             epoch.addResponse(obj.rig.getDevice(obj.amp));

@@ -59,6 +59,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
         analysisFigure
         analysisFigureAxes
         analysisFigureData
+        analysisFigureLines
     end
     
     properties (Hidden, Access = private)
@@ -219,13 +220,12 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             obj.uvLed.background = symphonyui.core.Measurement(rguBackgrounds(3), obj.uvLed.background.displayUnits);
         end
         
-        function createFigure(obj)
+        function createAnalysisFigure(obj)
             if ~isempty(obj.analysisFigureAxes) && isvalid(obj.analysisFigureAxes)
                 cla(obj.analysisFigureAxes);
             else
                 obj.analysisFigureAxes = axes('Parent', obj.analysisFigure.getFigureHandle());
             end
-            obj.customFigureLines = containers.Map();
             
             obj.analysisFigureAxes.NextPlot = 'add';
             obj.analysisFigureAxes.XLabel.String = 'time (ms)';
@@ -248,12 +248,13 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             for i = 1:4
                obj.analysisFigureLines(epochTypeKeys{i}) = plot( ...
                    obj.analysisFigureAxes, ...
-                   (1:responsePoints) * 1e3 / sampleRate, zeros(1, responsePoints));
+                   (1:responsePoints) * 1e3 / obj.sampleRate, zeros(1, responsePoints));
             end
             
-            leg = legend(epochTypeKeys{:});
+            disp(epochTypeKeys);
+            leg = legend(obj.analysisFigureAxes, epochTypeKeys{:});
             leg.Box = 'off';
-            leg.Position = 'northeast';
+            leg.Location = 'northeast';
         end
         
         function updateAnalysisFigure(obj, ~, epoch)
@@ -263,7 +264,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             
             % figure out linear filter for epoch
             % get and trim response
-            response = epoch.getResponse(obj.rig.getDevice(obj.amp));
+            response = epoch.getResponse(obj.rig.getDevice(obj.amp)).getData();
             response = response(prePts + 1:prePts + stimPts);
             
             % if necessary, detect spikes
@@ -272,7 +273,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             end
             
             % get and trim stimulus
-            stimulus = epoch.getResponse(obj.rig.getDevice(obj.greenLed));
+            stimulus = epoch.getStimulus(obj.greenLed).getData();
             stimulus = stimulus(prePts + 1:prePts + stimPts);
             
             % figure out key for given background pair and stimulus type
@@ -280,8 +281,8 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
                 obj.coneOnConstantToStimulate, ...
                 obj.constantConeBackground, ...
                 obj.coneForChangingBackgrounds, ...
-                epoch.getParameter(sprintf('%sConeMean', obj.coneForChangingBackgrounds(1))), ...
-                epoch.getParameter('coneWithStimulus'));
+                epoch.parameters(sprintf('%sConeMean', obj.coneForChangingBackgrounds(1))), ...
+                epoch.parameters('coneWithStimulus'));
             
             newLinearFilter = obj ...
                 .analysisFigureData(epochTypeKey) ...
@@ -292,7 +293,8 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             newLinearFilter = newLinearFilter * (2 * (max(newLinearFilter) > abs(min(newLinearFilter))) - 1);
             
             % update plot line
-            obj.analysisFigureLines(epochTypeKey).YData = newLinearFilter;
+            currentLine = obj.analysisFigureLines(epochTypeKey);
+            currentLine.YData = newLinearFilter;
         end
         
         function stimulusOrder = CreateStimulusOrderForRun(obj)
