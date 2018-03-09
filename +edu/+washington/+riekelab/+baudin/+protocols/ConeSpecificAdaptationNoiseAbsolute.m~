@@ -262,26 +262,21 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             stimPts = obj.stimTime * obj.sampleRate / 1e3;
             
             % figure out linear filter for epoch
-            % get and trim response
+            % get response
             response = epoch.getResponse(obj.rig.getDevice(obj.amp));
-            response = response(prePts + 1:prePts + stimPts);
+            response = response(prePts 
             
-            % if necessary, detect spikes
             if strcmp(obj.onlineAnalysis, 'extracellular')
-               response = edu.washington.riekelab.baudin.utils.spikeDetectorOnline(response);
+               response =  
             end
             
-            % get and trim stimulus
             stimulus = epoch.getResponse(obj.rig.getDevice(obj.greenLed));
-            stimulus = stimulus(prePts + 1:prePts + stimPts);
-            
-            % figure out key for given background pair and stimulus type
             epochTypeKey = sprintf('%s: %i, %s: %i, %s isol.', ...
                 obj.coneOnConstantToStimulate, ...
                 obj.constantConeBackground, ...
                 obj.coneForChangingBackgrounds, ...
-                epoch.getParameter(sprintf('%sConeMean', obj.coneForChangingBackgrounds(1))), ...
-                epoch.getParameter('coneWithStimulus'));
+                obj.changingConeBackgrounds(1), ...
+                coneWithStimulus);
             
             newLinearFilter = obj ...
                 .analysisFigureData(epochTypeKey) ...

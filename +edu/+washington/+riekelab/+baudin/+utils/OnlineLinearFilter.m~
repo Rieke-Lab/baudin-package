@@ -1,0 +1,47 @@
+classdef OnlineLinearFilter < handle
+    properties
+        sampleRate
+        cutoffFrequency
+        currentMeanResponseFft
+        currentMeanStimulusFft
+        numberOfEpochsCompleted
+    end
+    
+    methods
+        function obj = OnlineLinearFilter(responsePoints, sampleRate, cutoffFrequency)
+            obj.sampleRate = sampleRate;
+            obj.cutoffFrequency = cutoffFrequency;
+            obj.numberOfEpochsCompleted = 0;
+            obj.currentMeanResponseFft = zeros(1, responsePoints);
+            obj.currentMeanStimulusFft = zeros(1, responsePoints);
+        end
+        
+        function AddEpochData(obj, stimulus, response)
+            % update stimulus fft
+            stimulusFft = fft(stimulus);
+            obj.currentMeanStimulusFft = ...
+                (obj.numberOfEpochsCompleted / (obj.numberOfEpochsCompleted + 1)) * obj.currentMeanStimulusFft ...
+                + (1 / (obj.numberOfEpochsCompleted + 1)) * stimulusFft;
+            
+            % update response fft
+            responseFft = fft(response);
+            obj.currentMeanResponseFft = ...
+                (obj.numberOfEpochsCompleted / (obj.numberOfEpochsCompleted + 1)) * obj.currentMeanResponseFft ...
+                + (1 / (obj.numberOfEpochsCompleted + 1)) * responseFft;
+            
+            % increment completed epochs counter
+            obj.numberOfEpochsCompleted = obj.numberOfEpochsCompleted + 1;
+        end
+        
+        function linearFilter = ComputeCurrentLinearFilter(obj)
+            linearFilter = (obj.currentMeanResponseFft .* conj(obj.currentMeanStimulusFft)) ...
+                ./ (obj.currentMeanStimulusFft .* conj(obj.currentMeanStimulusFft));
+        end
+        
+        function linearFilter = AddEpochDataAndComputeCurrentLinearFilter(obj, stimulus, response)
+            obj.AddEpochData(stimulus, response);
+            linearFilter = obj.ComputeCurrentLinearFilter();
+        end
+    end
+    
+end
