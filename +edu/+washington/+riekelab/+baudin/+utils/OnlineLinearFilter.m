@@ -2,8 +2,7 @@ classdef OnlineLinearFilter < handle
     properties
         sampleRate
         offsetForCutoffFrequency
-        currentMeanResponseFft
-        currentMeanStimulusFft
+        currentFilterFft
         numberOfEpochsCompleted
     end
     
@@ -17,38 +16,34 @@ classdef OnlineLinearFilter < handle
                 obj.offsetForCutoffFrequency = (responsePoints / 2) - 1;
             end
             
-            fprintf('offset for cutoff frequency: %i\n', obj.offsetForCutoffFrequency);
-
             obj.numberOfEpochsCompleted = 0;
-            obj.currentMeanResponseFft = zeros(1, responsePoints);
-            obj.currentMeanStimulusFft = zeros(1, responsePoints);
+            obj.currentFilterFft = zeros(1, responsePoints);
         end
         
         function AddEpochData(obj, stimulus, response)
-            % update stimulus fft
+            % calculate stimulus fft
             stimulusFft = fft(stimulus);
-            obj.currentMeanStimulusFft = ...
-                (obj.numberOfEpochsCompleted / (obj.numberOfEpochsCompleted + 1)) * obj.currentMeanStimulusFft ...
-                + (1 / (obj.numberOfEpochsCompleted + 1)) * stimulusFft;
             
-            % update response fft
+            % calculate response fft 
             responseFft = fft(response);
-            obj.currentMeanResponseFft = ...
-                (obj.numberOfEpochsCompleted / (obj.numberOfEpochsCompleted + 1)) * obj.currentMeanResponseFft ...
-                + (1 / (obj.numberOfEpochsCompleted + 1)) * responseFft;
+            
+            % calculate the filter fft
+            filterFft = (responseFft .* conj(stimulusFft)) ./ (stimulusFft .* conj(stimulusFft));
+            
+            % set frequencies out of range to zero
+            filterFft(1 + obj.offsetForCutoffFrequency:end - obj.offsetForCutoffFrequency) = 0;
+            
+            % update the running mean            
+            obj.currentFilterFft = ...
+                (obj.numberOfEpochsCompleted / (obj.numberOfEpochsCompleted + 1)) * obj.currentFilterFft ...
+                + (1 / (obj.numberOfEpochsCompleted + 1)) * filterFft;
             
             % increment completed epochs counter
             obj.numberOfEpochsCompleted = obj.numberOfEpochsCompleted + 1;
         end
         
         function linearFilter = ComputeCurrentLinearFilter(obj)
-            linearFilterFft = (obj.currentMeanResponseFft .* conj(obj.currentMeanStimulusFft)) ...
-                ./ (obj.currentMeanStimulusFft .* conj(obj.currentMeanStimulusFft));
-            
-            % remove frequencies beyond cutoff frequency
-            linearFilterFft(1 + obj.offsetForCutoffFrequency:end - obj.offsetForCutoffFrequency) = 0;
-            
-            linearFilter = real(ifft(linearFilterFft));
+            linearFilter = real(ifft(obj.currentFilterFft));
         end
         
         function linearFilter = AddEpochDataAndComputeCurrentLinearFilter(obj, stimulus, response)
