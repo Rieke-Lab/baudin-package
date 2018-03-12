@@ -16,6 +16,8 @@ classdef OnlineLinearFilter < handle
             else
                 obj.offsetForCutoffFrequency = (responsePoints / 2) - 1;
             end
+            
+            fprintf('offset for cutoff frequency: %i\n', obj.offsetForCutoffFrequency);
 
             obj.numberOfEpochsCompleted = 0;
             obj.currentMeanResponseFft = zeros(1, responsePoints);

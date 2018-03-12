@@ -242,7 +242,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             responsePoints = obj.stimTime * obj.sampleRate / 1e3;
             obj.analysisFigureData = containers.Map( ...
                 epochTypeKeys, ...
-                arrayfun(@(x) edu.washington.riekelab.baudin.utils.OnlineLinearFilter(responsePoints, obj.sampleRate, obj.frequencyCutoff), 1:4, 'UniformOutput', false));
+                arrayfun(@(x) edu.washington.riekelab.baudin.utils.OnlineLinearFilter(responsePoints, obj.sampleRate, obj.frequencyCutoff / 2), 1:4, 'UniformOutput', false));
             
             obj.analysisFigureLines = containers.Map('KeyType', 'char', 'ValueType', 'any');
             for i = 1:4
@@ -269,7 +269,9 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             
             % if necessary, detect spikes
             if strcmp(obj.onlineAnalysis, 'extracellular')
-               response = edu.washington.riekelab.baudin.utils.spikeDetectorOnline(response);
+                spikeDetectionResults = edu.washington.riekelab.baudin.utils.spikeDetectorOnline(response);
+               response = zeros(size(response));
+               response(spikeDetectionResults.sp) = 1;
             end
             
             % get and trim stimulus
@@ -287,7 +289,7 @@ classdef ConeSpecificAdaptationNoiseAbsolute < edu.washington.riekelab.protocols
             newLinearFilter = obj ...
                 .analysisFigureData(epochTypeKey) ...
                 .AddEpochDataAndComputeCurrentLinearFilter(stimulus, response);
-            
+            fprintf('adding linear filter number %i\n', obj.analysisFigureData(epochTypeKey).numberOfEpochsCompleted);
             % normalize the filter
             newLinearFilter = newLinearFilter / max(abs(newLinearFilter));
             newLinearFilter = newLinearFilter * (2 * (max(newLinearFilter) > abs(min(newLinearFilter))) - 1);
