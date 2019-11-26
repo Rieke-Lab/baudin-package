@@ -1,7 +1,7 @@
 classdef ConeLinearizationFullField < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
-        stimulusDataPath = 'enter path here'; % string of path to
+        stimulusDataPath = 'stimulus file'; % file with stimulus vectors
         isomerizationsAtMonitorValue1 = 0;
         inputStimulusFrameRate = 60;
         preFrames = 30
@@ -20,6 +20,7 @@ classdef ConeLinearizationFullField < edu.washington.riekelab.protocols.RiekeLab
         currentStimulus
         stimulusDurationSeconds
         backgroundIsomerizations
+        ResourceFolderPath = 'C:\Users\Public\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\'
     end
     
     properties (Hidden, Transient)
@@ -37,7 +38,7 @@ classdef ConeLinearizationFullField < edu.washington.riekelab.protocols.RiekeLab
             obj.stimuli = struct;
             obj.stimuli.names = {'original', 'modified'};
             
-            stimulusData = load(obj.stimulusDataPath);
+            stimulusData = load(strcat(obj.ResourceFolderPath, obj.stimulusDataPath));
             
             % assumes all have same background
             obj.backgroundIsomerizations = stimulusData.original(1); 
