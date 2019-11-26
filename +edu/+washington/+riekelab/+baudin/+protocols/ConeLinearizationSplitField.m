@@ -1,13 +1,14 @@
 classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
-        stimulusDataPath = 'enter path here'; % string of path to
+        stimulusDataPath = 'stimulus file'; % string of path to
         isomerizationsAtMonitorValue1 = 0;
         inputStimulusFrameRate = 60;
         preFrames = 30
         postFrames = 30
         rotation = 0; % degrees
         maskDiameter = 0; % um
+        mean = 4000;  % R*/cone/s
         onlineAnalysis = 'none';
         averagesPerStimulus = uint16(20);
         amp
@@ -20,6 +21,7 @@ classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLa
         currentStimuli
         stimulusDurationSeconds
         backgroundIsomerizations
+        ResourceFolderPath = 'C:\Users\Public\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\'
     end
     
     properties (Hidden, Transient)
@@ -35,26 +37,24 @@ classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLa
         
         function constructStimuli(obj)
             obj.stimuli = struct;
-            obj.stimuli.names = {'positive corrected', ...
-                'negative corrected', ...
-                'both corrected', ...
-                'positive uncorrected', ...
-                'negative uncorrected', ...
-                'both uncorrected'};
+
+            obj.stimuli.names = {'both corrected', ...
+                'both uncorrected', ...
+                'both corrected flip', ...
+                'both uncorrected flip'};
+
+            stimulusData = load(strcat(obj.ResourceFolderPath, obj.stimulusDataPath));
             
-            stimulusData = load(obj.stimulusDataPath);
-            obj.backgroundIsomerizations = stimulusData.positiveCorrected(1);
+            obj.backgroundIsomerizations = obj.mean;
             meanVector = obj.backgroundIsomerizations ...
                 * ones(1, numel(stimulusData.positiveCorrected));
             
             obj.stimuli.lookup = containers.Map(obj.stimuli.names, ...
-                {{stimulusData.positiveCorrected, meanVector}, ...
-                {meanVector, stimulusData.negativeCorrected}, ...
-                {stimulusData.positiveCorrected, stimulusData.negativeCorrected}, ...
-                {stimulusData.positiveUncorrected, meanVector}, ...
-                {meanVector, stimulusData.negativeUncorrected}, ...
-                {stimulusData.positiveUncorrected, stimulusData.negativeUncorrected}});
-            
+                {{stimulusData.positiveCorrected, stimulusData.negativeCorrected}, ...
+                {stimulusData.positiveUncorrected, stimulusData.negativeUncorrected}, ...
+                {stimulusData.negativeCorrected, stimulusData.positiveCorrected}, ...
+                {stimulusData.negativeUncorrected, stimulusData.positiveUncorrected}});
+
             obj.stimulusDurationSeconds = (obj.preFrames + numel(stimulusData.positiveCorrected) + obj.postFrames) ...
                 / obj.inputStimulusFrameRate;
         end

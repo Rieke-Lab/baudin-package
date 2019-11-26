@@ -147,7 +147,7 @@ classdef VariableContrastNoise < edu.washington.riekelab.protocols.RiekeLabProto
             end
 
             stim = obj.createLedStimulus(seed);
-            
+
             epoch.addParameter('seed', seed);
             epoch.addStimulus(obj.rig.getDevice(obj.led), stim);
             epoch.addResponse(obj.rig.getDevice(obj.amp));
