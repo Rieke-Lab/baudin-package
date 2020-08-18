@@ -32,8 +32,7 @@ classdef NoiseStepWithFlashes < edu.washington.riekelab.protocols.RiekeLabProtoc
     methods
         
         function didSetRig(obj)
-            didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
-            
+            didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);      
             [obj.led, obj.ledType] = obj.createDeviceNamesProperty('LED');
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end

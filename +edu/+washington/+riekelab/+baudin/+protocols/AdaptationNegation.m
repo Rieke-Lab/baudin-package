@@ -4,7 +4,7 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
 
     properties
         led                                 % Output LED
-        stimulusPath = 'enter path here'    % Path of .mat file containing original and modified stimulus vectors
+        fileName = 'enter filename here'    % Path of .mat file containing original and modified stimulus vectors
         isomPerVolt = 1000                  % Isomerizations per volt on currently selected LED
         amp                                 % Input amplifier
     end
@@ -21,9 +21,9 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
     properties (Hidden)
         ledType
         ampType
-        stimulusPathType = symphonyui.core.PropertyType('char', 'row');
         originalGenerator
         modifiedGenerator
+        ResourceFolderPath = 'C:\Users\Public\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\'
     end
 
     properties (Dependent, Hidden = true)
@@ -77,7 +77,7 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
 
         function createStimulusGenerators(obj)
-            stimulusVectors = load(obj.stimulusPath);
+            stimulusVectors = load(strcat(obj.ResourceFolderPath, obj.fileName));
             obj.originalGenerator = obj.createGenerator(stimulusVectors.original);
             obj.modifiedGenerator = obj.createGenerator(stimulusVectors.modified);
         end
