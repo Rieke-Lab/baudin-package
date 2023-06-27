@@ -69,6 +69,8 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
                     'groupBy2', {'stimulusType'});
             end
 
+
+
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement( ...
                 obj.originalGenerator.waveshape(1), device.background.displayUnits);
@@ -82,9 +84,6 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
 
         function gen = createGenerator(obj, vector)
             gen = symphonyui.builtin.stimuli.WaveformGenerator;
-            indices = find(vector < 0);
-            vector(indices) = 0; 
-            obj.isomPerVolt
             gen.waveshape = vector / obj.isomPerVolt;
             gen.sampleRate = obj.sampleRate;
             gen.units = obj.rig.getDevice(obj.led).background.displayUnits;
