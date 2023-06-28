@@ -6,6 +6,7 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         led                                 % Output LED
         stimulusPath = 'enter path here'    % Path of .mat file containing original and modified stimulus vectors
         isomPerVolt = 1000                  % Isomerizations per volt on currently selected LED
+        psth=true;
         amp                                 % Input amplifier
     end
     
@@ -31,17 +32,14 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
     end
 
     methods
-
         function didSetRig(obj)
             didSetRig@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
-
             [obj.led, obj.ledType] = obj.createDeviceNamesProperty('LED');
             [obj.amp, obj.ampType] = obj.createDeviceNamesProperty('Amp');
         end
 
         function d = getPropertyDescriptor(obj, name)
             d = getPropertyDescriptor@edu.washington.riekelab.protocols.RiekeLabProtocol(obj, name);
-
             if strncmp(name, 'amp2', 4) && numel(obj.rig.getDeviceNames('Amp')) < 2
                 d.isHidden = true;
             end
@@ -55,8 +53,8 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
 
         function prepareRun(obj)
             prepareRun@edu.washington.riekelab.protocols.RiekeLabProtocol(obj);
-
             obj.createStimulusGenerators();
+            colors = edu.washington.riekelab.turner.utils.pmkmp(3,'CubicYF');
 
             if numel(obj.rig.getDeviceNames('Amp')) < 2
                 obj.showFigure('symphonyui.builtin.figures.ResponseFigure', obj.rig.getDevice(obj.amp));
@@ -68,8 +66,9 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
                     'groupBy1', {'stimulusType'}, ...
                     'groupBy2', {'stimulusType'});
             end
-
-
+            
+            obj.showFigure('edu.washington.riekelab.figures.MeanResponseFigure',...
+                obj.rig.getDevice(obj.amp),'groupBy',{'stimulusType'},'psth',obj.psth,'sweepColor',colors);
 
             device = obj.rig.getDevice(obj.led);
             device.background = symphonyui.core.Measurement( ...
@@ -77,7 +76,7 @@ classdef AdaptationNegation < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
 
         function createStimulusGenerators(obj)
-            stimulusVectors = load(obj.stimulusPath);
+            stimulusVectors = load(strcat(obj.stimulusPath));
             obj.originalGenerator = obj.createGenerator(stimulusVectors.original);
             obj.modifiedGenerator = obj.createGenerator(stimulusVectors.modified);
         end

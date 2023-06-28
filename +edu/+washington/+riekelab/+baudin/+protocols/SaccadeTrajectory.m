@@ -100,7 +100,7 @@ classdef SaccadeTrajectory < edu.washington.riekelab.protocols.RiekeLabProtocol
         end
         
         function stim = createLedStimulus(obj, times, durations, amps)
-            gen = symphonyui.builtin.stimuli.SaccadeTrajectoryGenerator();
+            gen = edu.washington.riekelab.rieke.stimuli.SaccadeTrajectoryGenerator();
             
             gen.preTime = obj.preTime;
             gen.tailTime = obj.tailTime;

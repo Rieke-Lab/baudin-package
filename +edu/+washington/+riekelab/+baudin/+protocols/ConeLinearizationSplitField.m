@@ -1,7 +1,7 @@
 classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLabStageProtocol
     
     properties
-        stimulusDataPath = 'enter path here'; % string of path to
+        stimulusDataPath = 'stimulus file'; % string of path to
         isomerizationsAtMonitorValue1 = 0;
         inputStimulusFrameRate = 60;
         preFrames = 30
@@ -20,6 +20,7 @@ classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLa
         currentStimuli
         stimulusDurationSeconds
         backgroundIsomerizations
+        ResourceFolderPath = 'C:\Users\Public\Documents\baudin-package\+edu\+washington\+riekelab\+baudin\+resources\'
     end
     
     properties (Hidden, Transient)
@@ -42,7 +43,8 @@ classdef ConeLinearizationSplitField < edu.washington.riekelab.protocols.RiekeLa
                 'negative uncorrected', ...
                 'both uncorrected'};
             
-            stimulusData = load(obj.stimulusDataPath);
+            stimulusData = load(strcat(obj.ResourceFolderPath, obj.stimulusDataPath));
+            
             obj.backgroundIsomerizations = stimulusData.positiveCorrected(1);
             meanVector = obj.backgroundIsomerizations ...
                 * ones(1, numel(stimulusData.positiveCorrected));
